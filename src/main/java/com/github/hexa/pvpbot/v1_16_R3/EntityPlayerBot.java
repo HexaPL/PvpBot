@@ -100,6 +100,16 @@ public class EntityPlayerBot extends EntityPlayer {
     }
 
     @Override
+    public void attack(Entity entity) {
+        boolean wasSprinting = false;
+        if (this.isSprinting()) {
+            wasSprinting = true;
+        }
+        super.attack(entity);
+        this.setSprinting(wasSprinting);
+    }
+
+    @Override
     public boolean damageEntity(DamageSource damagesource, float f) {
         Vec3D vec = this.getMot();
         this.setMot(0, this.getMot().y, 0);
