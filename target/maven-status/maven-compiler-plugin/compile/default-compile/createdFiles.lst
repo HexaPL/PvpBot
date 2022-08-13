@@ -1,0 +1,12 @@
+com\github\hexa\pvpbot\v1_16_R3\BotConnection.class
+com\github\hexa\pvpbot\v1_16_R3\BotManager$1.class
+com\github\hexa\pvpbot\v1_16_R3\EntityPlayerBot.class
+com\github\hexa\pvpbot\util\PacketUtils.class
+com\github\hexa\pvpbot\util\BoundingBoxUtils.class
+com\github\hexa\pvpbot\command\BotCommand.class
+com\github\hexa\pvpbot\v1_16_R3\BotManager.class
+com\github\hexa\pvpbot\v1_16_R3\EntityPlayerBot$2.class
+com\github\hexa\pvpbot\v1_16_R3\EntityPlayerBot$1.class
+com\github\hexa\pvpbot\util\VectorUtils.class
+com\github\hexa\pvpbot\v1_16_R3\BotNetworkManager.class
+com\github\hexa\pvpbot\PvpBotPlugin.class
