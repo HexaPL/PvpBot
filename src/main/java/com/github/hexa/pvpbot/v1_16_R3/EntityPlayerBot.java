@@ -14,10 +14,14 @@ public class EntityPlayerBot extends EntityPlayer {
 
     public String name;
     public EntityPlayer owner;
+    public EntityPlayer target;
     public float forward;
     public float strafe;
     public float reach;
     public boolean shouldAttack;
+    public int clicksPerSecond;
+    public long tickMsTimer;
+    public int clickDelay;
 
     public EntityPlayerBot(String name, EntityPlayer owner, MinecraftServer minecraftserver, WorldServer worldserver, GameProfile gameprofile, PlayerInteractManager playerinteractmanager) {
         super(minecraftserver, worldserver, gameprofile, playerinteractmanager);
@@ -26,16 +30,17 @@ public class EntityPlayerBot extends EntityPlayer {
         this.reach = 3.0F;
         this.forward = 0F;
         this.strafe = 0F;
+        this.clicksPerSecond = 0;
+        this.tickMsTimer = 0;
+        this.clickDelay = 0;
         this.shouldAttack = false;
     }
 
     @Override
     public void tick() {
-        this.rotateToTarget(this.owner);
+        this.updateRotation();
         this.updateMovement();
-        if (this.shouldAttack) {
-            this.tryAttack(this.owner);
-        }
+        this.doHitLogic();
         super.tick();
         super.playerTick();
     }
@@ -43,6 +48,47 @@ public class EntityPlayerBot extends EntityPlayer {
     @Override
     public void playerTick() {
         super.playerTick();
+    }
+
+    public void doHitLogic() {
+        if (!this.shouldAttack || this.clicksPerSecond == 0) {
+            this.tickMsTimer = 0;
+            return;
+        }
+        this.tickMsTimer += 50;
+        while (this.tickMsTimer > this.clickDelay) {
+            this.tryAttack(this.target);
+            this.tickMsTimer -= this.clickDelay;
+        }
+    }
+
+    public void tryAttack(EntityPlayer target) {
+        if (this.shouldSwing(target)) {
+            this.swingArm();
+        }
+        if (this.canAttack(target)) {
+            this.attack(target);
+        }
+    }
+
+    public boolean canAttack(EntityPlayer target) {
+        double distance = BoundingBoxUtils.getDistanceToAABB(this.getBukkitEntity().getEyeLocation(), target.getBoundingBox());
+        return (distance <= this.reach);
+        // TODO - raytracing
+    }
+
+    public boolean shouldSwing(EntityPlayer target) {
+        double distance = BoundingBoxUtils.getDistanceToAABB(this.getBukkitEntity().getEyeLocation(), target.getBoundingBox());
+        return (distance <= this.reach + 2);
+    }
+
+    public void swingArm() {
+        PacketPlayOutAnimation packetPlayOutAnimation = new PacketPlayOutAnimation(this, 0);
+        PacketUtils.sendPacketNearby(this, packetPlayOutAnimation);
+    }
+
+    public void updateRotation() {
+        this.rotateToTarget(this.owner);
     }
 
     public void rotateToTarget(EntityPlayer target) {
@@ -68,43 +114,9 @@ public class EntityPlayerBot extends EntityPlayer {
         this.aR = this.strafe;
     }
 
-    public void tryAttack(EntityPlayer target) {
-        if (this.shouldSwing(target)) {
-            this.swingArm();
-        }
-        if (this.canAttack(target)) {
-            this.attack(target);
-        }
-    }
-
-    public boolean canAttack(EntityPlayer target) {
-        double distance = BoundingBoxUtils.getDistanceToAABB(this.getBukkitEntity().getEyeLocation(), target.getBoundingBox());
-        if (distance > this.reach) {
-            return false;
-        }
-        return true;
-        // TODO - raytracing
-    }
-
-    public boolean shouldSwing(EntityPlayer target) {
-        double distance = BoundingBoxUtils.getDistanceToAABB(this.getBukkitEntity().getEyeLocation(), target.getBoundingBox());
-        if (distance > this.reach + 2) {
-            return false;
-        }
-        return true;
-    }
-
-    public void swingArm() {
-        PacketPlayOutAnimation packetPlayOutAnimation = new PacketPlayOutAnimation(this, 0);
-        PacketUtils.sendPacketNearby(this, packetPlayOutAnimation);
-    }
-
     @Override
     public void attack(Entity entity) {
-        boolean wasSprinting = false;
-        if (this.isSprinting()) {
-            wasSprinting = true;
-        }
+        boolean wasSprinting = this.isSprinting();
         super.attack(entity);
         this.setSprinting(wasSprinting);
     }
@@ -141,6 +153,29 @@ public class EntityPlayerBot extends EntityPlayer {
                 ((WorldServer) world).removeEntity(EntityPlayerBot.this);
             }
         }, 15);
+    }
+
+    public EntityPlayer getTarget() {
+        return target;
+    }
+
+    public void setTarget(EntityPlayer target) {
+        this.target = target;
+        this.shouldAttack = true;
+    }
+
+    public void clearTarget() {
+        this.shouldAttack = false;
+        this.target = null;
+    }
+
+    public void setCPS(int cps) {
+        this.clicksPerSecond = cps;
+        this.clickDelay = cps == 0 ? 0 : 1000 / cps;
+    }
+
+    public int getCPS() {
+        return this.clicksPerSecond;
     }
 
     public void setMoveForward(float forward) {
