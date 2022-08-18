@@ -7,14 +7,6 @@ import org.bukkit.util.Vector;
 
 public class VectorUtils {
 
-    public static Vec3D bukkitToVec3d(Vector bukkitVector) {
-        return new Vec3D(bukkitVector.getX(), bukkitVector.getY(), bukkitVector.getZ());
-    }
-
-    public static Vector vec3dToBukkit(Vec3D vec3d) {
-        return new Vector(vec3d.getX(), vec3d.getY(), vec3d.getZ());
-    }
-
     public static float getVectorYaw(Vector vector) {
         Location location = getLocationZero();
         location.setDirection(vector);

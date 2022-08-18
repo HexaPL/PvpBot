@@ -2,11 +2,12 @@ package com.github.hexa.pvpbot.util;
 
 import net.minecraft.server.v1_16_R3.AxisAlignedBB;
 import org.bukkit.Location;
+import org.bukkit.craftbukkit.v1_16_R3.util.CraftVector;
 
 public class BoundingBoxUtils {
 
     public static double getDistanceToAABB(Location origin, AxisAlignedBB aabb) {
-        if (aabb.contains(VectorUtils.bukkitToVec3d(origin.toVector()))) {
+        if (aabb.contains(CraftVector.toNMS(origin.toVector()))) {
             return 0D;
         }
         double dx = Math.max(Math.max(aabb.minX - origin.getX(), origin.getX() - aabb.maxX), 0);

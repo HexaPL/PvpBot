@@ -2,6 +2,7 @@ name: PvpBot
 version: 1.0
 author: Hexa
 main: com.github.hexa.pvpbot.PvpBotPlugin
+load: STARTUP
 api-version: 1.16
 commands:
   bot:
