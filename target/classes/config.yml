@@ -1,1 +1,7 @@
-status-message: "Na serwerze jest obecnie %player_count% graczy."
+knockback-horizontal: 0.4D
+knockback-vertical: 0.4D
+friction-horizontal: 2.0D
+friction-vertical: 2.0D
+extra-horizontal: 0.5D
+extra-vertical: 0.1D
+limit-vertical: 0.4D
