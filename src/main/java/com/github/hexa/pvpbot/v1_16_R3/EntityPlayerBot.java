@@ -122,7 +122,7 @@ public class EntityPlayerBot extends EntityPlayer {
 
     public void handleSprintResetting() {
 
-        // Check if any action is requiredd
+        // Check if any action is required
         if (!this.canSprint || this.forward <= 0 || this.sprintTicks == -1) {
             return;
         }
