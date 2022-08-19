@@ -8,6 +8,8 @@ import com.mojang.authlib.GameProfile;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import static com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot.SprintResetMethod.*;
@@ -99,18 +101,33 @@ public class EntityPlayerBot extends EntityPlayer {
             this.tickMsTimer = 0;
             return;
         }
-        this.tickMsTimer += 50;
 
-        // Check for reach and hit target with current CPS
-        while (this.tickMsTimer > this.clickDelay) {
-            double distance = BoundingBoxUtils.getDistanceToAABB(this.getBukkitEntity().getEyeLocation(), target.getBoundingBox());
-            if (distance <= this.reach + 2) {
-                this.swingArm();
-            }
-            if (distance <= this.reach) {
+        // Return if on click cooldown
+        if (this.tickMsTimer < this.clickDelay) {
+            this.tickMsTimer += 50;
+            return;
+        }
+
+        // Calculate distance to closest point of target's hitbox
+        Location eyeLocation = this.getBukkitEntity().getEyeLocation();
+        BoundingBox targetBoundingBox = target.getBukkitEntity().getBoundingBox();
+        double distance = BoundingBoxUtils.distanceTo(eyeLocation, targetBoundingBox);
+
+        // Check if target is close enough to swing or attack
+        if (distance > this.reach + 2) {
+            return;
+        }
+
+        // Perform raytrace to target's hitbox
+        RayTraceResult result = targetBoundingBox.rayTrace(eyeLocation.toVector(), eyeLocation.getDirection(), this.reach);
+
+        // Swing hand and/or attack target, based on current click rate
+        while (this.tickMsTimer >= this.clickDelay) {
+            this.tickMsTimer -= this.clickDelay;
+            this.swingArm();
+            if (result != null) {
                 this.attack(target);
             }
-            this.tickMsTimer -= this.clickDelay;
         }
 
     }
@@ -123,7 +140,7 @@ public class EntityPlayerBot extends EntityPlayer {
     public void handleSprintResetting() {
 
         // Check if any action is required
-        if (!this.canSprint || this.forward <= 0 || this.sprintTicks == -1) {
+        if (!this.canSprint || this.sprintTicks == -1) {
             return;
         }
 
@@ -132,6 +149,8 @@ public class EntityPlayerBot extends EntityPlayer {
             this.sTapSlowdown = false;
             this.setMoveForward(FORWARD);
         }
+
+        // Bukkit.broadcastMessage("handleSprintResetting - sprintTicks" + )
 
         // Start sprint reset if needed
         if (this.isSprinting() && this.forward > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
@@ -221,7 +240,6 @@ public class EntityPlayerBot extends EntityPlayer {
         if (knockback && isSprinting() && !freshSprint) {
             this.setSprinting(false);
         }
-
         super.attack(entity);
 
         // Simulate client-server desync and make bot sprint-reset soon
