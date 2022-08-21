@@ -1,16 +1,14 @@
 package com.github.hexa.pvpbot;
 
+import com.github.hexa.pvpbot.util.NMSUtils;
 import com.github.hexa.pvpbot.command.BotCommand;
-import com.github.hexa.pvpbot.v1_16_R3.PacketListener;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class PvpBotPlugin extends JavaPlugin implements Listener {
     public static PvpBotPlugin instance;
+    public BotManager botManager;
     public static FileConfiguration CONFIG;
 
     @Override
@@ -18,6 +16,7 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
         instance = this;
         getLogger().info("PvpBot enabled!");
         getServer().getPluginManager().registerEvents(this, this);
+        this.registerBotManager();
         this.getCommand("bot").setExecutor(new BotCommand());
         this.saveDefaultConfig();
         this.reloadConfig();
@@ -41,14 +40,25 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
         saveConfig();
     }
 
-    @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
-        PacketListener.addPlayer(event.getPlayer());
+    public static BotManager getManager() {
+        return instance.botManager;
     }
 
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        PacketListener.removePlayer(event.getPlayer());
+    public void registerBotManager() {
+        String nmsVersion = NMSUtils.getNMSVersion();
+        switch (nmsVersion) {
+            case "v1_16_R3":
+                this.getLogger().info("Registering BotManager for craftbukkit version v1_16_R3");
+                this.botManager = new com.github.hexa.pvpbot.v1_16_R3.BotManager();
+                return;
+            case "v1_8_R3":
+                this.getLogger().info("Registering BotManager for craftbukkit version v1_8_R3");
+                this.botManager = new com.github.hexa.pvpbot.v1_8_R3.BotManager();
+                return;
+            default:
+                this.getLogger().info("Server is running version " + nmsVersion + ", which is not supported!");
+                this.getLogger().info("Use v1_16_R3 or v1_8_R3 instead!");
+                this.getServer().getPluginManager().disablePlugin(this);
+        }
     }
-
 }

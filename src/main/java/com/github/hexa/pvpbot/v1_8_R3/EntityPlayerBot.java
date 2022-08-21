@@ -1,4 +1,4 @@
-package com.github.hexa.pvpbot.v1_16_R3;
+package com.github.hexa.pvpbot.v1_8_R3;
 
 import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
@@ -6,16 +6,16 @@ import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import com.github.hexa.pvpbot.util.RotationUtils;
 import com.github.hexa.pvpbot.util.VectorUtils;
 import com.mojang.authlib.GameProfile;
-import net.minecraft.server.v1_16_R3.*;
+import net.minecraft.server.v1_8_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-import static com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot.SprintResetMethod.*;
+import static com.github.hexa.pvpbot.v1_8_R3.EntityPlayerBot.SprintResetMethod.*;
 
 public class EntityPlayerBot extends EntityPlayer implements Bot {
 
@@ -55,7 +55,7 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
     }
 
     @Override
-    public void tick() {
+    public void t_() {
         //tickStartMS = SystemUtils.getTimeMillis();
 
         // Update rotation
@@ -77,8 +77,8 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         this.handleSprintResetting();
 
         // Tick entity
-        super.tick();
-        super.playerTick();
+        super.t_(); // tick()
+        super.l(); // playerTick
 
         // Send rotation packets again to make head movement smooth
         this.sendRotationPackets(owner);
@@ -91,7 +91,7 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         byte yaw = RotationUtils.toByte(this.yaw);
         byte headYaw = RotationUtils.toByte(this.getHeadRotation());
         byte pitch = RotationUtils.toByte(this.pitch);
-        PacketPlayOutEntity.PacketPlayOutEntityLook packetPlayOutEntityLook = new PacketPlayOutEntity.PacketPlayOutEntityLook(entityId, yaw, pitch, this.isOnGround());
+        PacketPlayOutEntity.PacketPlayOutEntityLook packetPlayOutEntityLook = new PacketPlayOutEntity.PacketPlayOutEntityLook(entityId, yaw, pitch, this.onGround);
         PacketPlayOutEntityHeadRotation packetPlayOutEntityHeadRotation = new PacketPlayOutEntityHeadRotation(this, headYaw);
         owner.playerConnection.sendPacket(packetPlayOutEntityLook);
         owner.playerConnection.sendPacket(packetPlayOutEntityHeadRotation);
@@ -202,7 +202,7 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
     }
 
     public void sendBlockHitAnimation(BlockHitState state) {
-        
+
     }
 
     public void rotateToTarget(EntityPlayer target) {
@@ -219,7 +219,7 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
     }
 
     public void setRotation(float yaw, float pitch) {
-        this.setHeadRotation(yaw);
+        this.f(yaw); // setHeadRotation
         this.setYawPitch(yaw, pitch);
     }
 
@@ -235,7 +235,7 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         boolean wasSprinting = this.isSprinting();
 
         // Damage & invulnerability predictions
-        boolean canDamage = ((float) this.b(GenericAttributes.ATTACK_DAMAGE)) + (EnchantmentManager.a(this.getItemInMainHand(), EnumMonsterType.UNDEFINED)) > 0.0F;
+        boolean canDamage = ((float)this.getAttributeInstance(GenericAttributes.ATTACK_DAMAGE).getValue()) + (EnchantmentManager.a(this.bA(), EnumMonsterType.UNDEFINED)) > 0.0F;
         boolean invulnerable = (float) entity.noDamageTicks > (float) ((EntityLiving)entity).maxNoDamageTicks / 2.0F;
         boolean knockback = canDamage && !invulnerable;
 
@@ -264,7 +264,7 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
 
         // Set motion to 0 to simulate client-side knockback calculation
         if (!invulnerable && f > 0.0F) {
-            this.setMot(0, this.getMot().y, 0);
+            this.setMot(0, this.getMot().b, 0);
         }
 
         boolean damaged = super.damageEntity(damagesource, f);
@@ -304,16 +304,18 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
 
     }
 
-    public void sendSoundEffect(EntityPlayer fromEntity, double x, double y, double z, SoundEffect soundEffect, SoundCategory soundCategory, float volume, float pitch) {
-        fromEntity.world.playSound(fromEntity, x, y, z, soundEffect, soundCategory, volume, pitch);
-        if (!(fromEntity instanceof EntityPlayerBot)) {
-            fromEntity.playerConnection.sendPacket(new PacketPlayOutNamedSoundEffect(soundEffect, soundCategory, x, y, z, volume, pitch));
-        }
+    public void setMot(double x, double y, double z) {
+        this.motX = x;
+        this.motY = y;
+        this.motZ = z;
+    }
+
+    public Vec3D getMot() {
+        return new Vec3D(this.motX, this.motY, this.motZ);
     }
 
     public void sendPacketNearby(Packet<?> packet) {
-        ChunkProviderServer chunkproviderserver = ((WorldServer)this.world).getChunkProvider();
-        chunkproviderserver.broadcast(this, packet);
+        ((WorldServer) this.world).tracker.a(this, packet);
     }
 
     @Override

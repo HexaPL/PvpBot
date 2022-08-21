@@ -1,11 +1,11 @@
-package com.github.hexa.pvpbot.v1_16_R3;
+package com.github.hexa.pvpbot.v1_8_R3;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import net.minecraft.server.v1_16_R3.*;
-import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
+import net.minecraft.server.v1_8_R3.EntityPlayer;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
 public class PacketListener extends ChannelDuplexHandler {

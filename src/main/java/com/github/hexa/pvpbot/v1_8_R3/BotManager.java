@@ -1,21 +1,25 @@
-package com.github.hexa.pvpbot.v1_16_R3;
+package com.github.hexa.pvpbot.v1_8_R3;
 
 import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.mojang.authlib.GameProfile;
-import net.minecraft.server.v1_16_R3.*;
+import net.minecraft.server.v1_8_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.craftbukkit.v1_16_R3.CraftServer;
-import org.bukkit.craftbukkit.v1_16_R3.CraftWorld;
-import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
+import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 public class BotManager implements com.github.hexa.pvpbot.BotManager {
+
+    public static HashMap<String, EntityPlayerBot> bots = new HashMap<>();
+    public static HashMap<UUID, EntityPlayerBot> botUUIDs = new HashMap<>();
 
     @Override
     public Bot createBot(String name, World world, Location location, Player owner) {
@@ -29,7 +33,7 @@ public class BotManager implements com.github.hexa.pvpbot.BotManager {
 
         bot.setLocation(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
 
-        worldServer.addPlayerJoin(bot);
+        worldServer.addEntity(bot);
 
         bot.getBukkitEntity().setNoDamageTicks(0);
 
@@ -68,8 +72,8 @@ public class BotManager implements com.github.hexa.pvpbot.BotManager {
     public void removeBot(Bot bot) {
 
         EntityPlayerBot nmsBot = getBotHandle(bot);
-        WorldServer worldServer = nmsBot.getWorldServer();
-        worldServer.removePlayer(nmsBot);
+        WorldServer worldServer = ((CraftWorld) nmsBot.getBukkitEntity().getWorld()).getHandle();
+        worldServer.removeEntity(nmsBot);
         bots.remove(bot.getBotName());
 
     }
