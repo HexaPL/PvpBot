@@ -1,55 +1,41 @@
 package com.github.hexa.pvpbot.v1_16_R3;
 
-import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
-import com.github.hexa.pvpbot.util.BoundingBoxUtils;
+import com.github.hexa.pvpbot.ai.AttackResult;
+import com.github.hexa.pvpbot.ai.BotAI;
+import com.github.hexa.pvpbot.ai.BotAIBase;
+import com.github.hexa.pvpbot.ai.ControllableBot;
 import com.github.hexa.pvpbot.util.RotationUtils;
-import com.github.hexa.pvpbot.util.VectorUtils;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.craftbukkit.v1_16_R3.entity.CraftLivingEntity;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
-import org.bukkit.util.RayTraceResult;
-import org.bukkit.util.Vector;
 
-import static com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot.SprintResetMethod.*;
-
-public class EntityPlayerBot extends EntityPlayer implements Bot {
+public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
     public String name;
     public EntityPlayer owner;
-    public EntityPlayer target;
-    public float forward;
-    public float strafe;
-    public float reach;
+    private EntityPlayer target;
+    private BotAI ai;
+
+    private float forward;
+    private float strafe;
+
     private float prevYaw;
     private float prevPitch;
-    public boolean shouldAttack;
-    public int clicksPerSecond;
-    public long tickMsTimer;
-    public int clickDelay;
-    public boolean canSprint;
-    public boolean freshSprint;
-    public boolean isSprintResetting;
-    private boolean sTapSlowdown;
-    public int sprintResetDelay = 3;
-    public int sprintResetLength = 4;
-    public int sprintTicks;
-    public SprintResetMethod sprintResetMethod;
 
-    // Walk direction constants
-    public static final int FORWARD = 1;
-    public static final int BACKWARD = -1;
-    public static final int RIGHT = 1;
-    public static final int LEFT = 1;
+    private boolean canSprint;
 
     public EntityPlayerBot(String name, EntityPlayer owner, MinecraftServer minecraftserver, WorldServer worldserver, GameProfile gameprofile, PlayerInteractManager playerinteractmanager) {
         super(minecraftserver, worldserver, gameprofile, playerinteractmanager);
         this.name = name;
         this.owner = owner;
+        // Initialize AI
+        this.ai = new BotAIBase(this);
         // Initialize variables
         this.init();
     }
@@ -61,20 +47,13 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         // Update rotation
         this.prevYaw = this.yaw;
         this.prevPitch = this.pitch;
-        if (this.target != null) {
-            this.rotateToTarget(this.target);
-        }
+
+        // Tick AI
+        this.ai.tick();
 
         // Update move speed/direction
         this.aT = this.forward;
         this.aR = this.strafe;
-        this.setSprinting(this.canSprint && !this.isSprintResetting);
-
-        // Attack current target if possible
-        this.doHitLogic();
-
-        // Do sprint reset if needed
-        this.handleSprintResetting();
 
         // Tick entity
         super.tick();
@@ -97,165 +76,6 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         owner.playerConnection.sendPacket(packetPlayOutEntityHeadRotation);
     }
 
-    private void doHitLogic() {
-
-        // Check for target and CPS
-        if (this.target == null || !this.shouldAttack || this.clicksPerSecond == 0) {
-            this.tickMsTimer = 0;
-            return;
-        }
-
-        // Return if on click cooldown
-        if (this.tickMsTimer < this.clickDelay) {
-            this.tickMsTimer += 50;
-            return;
-        }
-
-        // Calculate distance to closest point of target's hitbox
-        Location eyeLocation = this.getBukkitEntity().getEyeLocation();
-        BoundingBox targetBoundingBox = target.getBukkitEntity().getBoundingBox();
-        double distance = BoundingBoxUtils.distanceTo(eyeLocation, targetBoundingBox);
-
-        // Check if target is close enough to swing or attack
-        if (distance > this.reach + 2) {
-            return;
-        }
-
-        // Perform raytrace to target's hitbox
-        RayTraceResult result = targetBoundingBox.rayTrace(eyeLocation.toVector(), eyeLocation.getDirection(), this.reach);
-
-        // Swing hand and/or attack target, based on current click rate
-        while (this.tickMsTimer >= this.clickDelay) {
-            this.tickMsTimer -= this.clickDelay;
-            this.swingArm();
-            if (result != null) {
-                this.attack(target);
-            }
-        }
-
-    }
-
-    public void swingArm() {
-        PacketPlayOutAnimation packetPlayOutAnimation = new PacketPlayOutAnimation(this, 0);
-        this.sendPacketNearby(packetPlayOutAnimation);
-    }
-
-    public void handleSprintResetting() {
-
-        // Check if any action is required
-        if (!this.canSprint || this.sprintTicks == -1) {
-            return;
-        }
-
-        // Reset s-tap slowdown to not move backwards
-        if (this.sTapSlowdown) {
-            this.sTapSlowdown = false;
-            this.setMoveForward(FORWARD);
-        }
-
-        // Bukkit.broadcastMessage("handleSprintResetting - sprintTicks" + )
-
-        // Start sprint reset if needed
-        if (this.isSprinting() && this.forward > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
-            this.setSprinting(false);
-            this.isSprintResetting = true;
-            this.startSprintReset(this.sprintResetMethod);
-            this.sprintTicks = 0;
-        }
-
-        // End sprint reset if needed
-        if (isSprintResetting && sprintTicks >= sprintResetLength) {
-            this.setSprinting(true);
-            this.freshSprint = true;
-            this.isSprintResetting = false;
-            this.endSprintReset(this.sprintResetMethod);
-            this.sprintTicks = -1;
-        }
-
-        if (this.sprintTicks != -1) this.sprintTicks++;
-
-    }
-
-    public void startSprintReset(SprintResetMethod method) {
-        switch (method) {
-            case WTAP:
-                // Simply simulate releasing W key
-                this.setMoveForward(0);
-                break;
-            case STAP:
-                // Do some opposite force to slow down faster
-                this.setMoveForward(-0.5F);
-                this.sTapSlowdown = true;
-                break;
-            case BLOCKHIT:
-                // Block sword
-                // TODO - blockhit
-                break;
-        }
-    }
-
-    public void endSprintReset(SprintResetMethod method) {
-        switch (method) {
-            case WTAP:
-                this.setMoveForward(FORWARD);
-        }
-    }
-
-    public void sendBlockHitAnimation(BlockHitState state) {
-        
-    }
-
-    public void rotateToTarget(EntityPlayer target) {
-        Location location = target.getBukkitEntity().getEyeLocation();
-        this.rotateToLocation(location);
-    }
-
-    public void rotateToLocation(Location location) {
-        Location from = this.getBukkitEntity().getEyeLocation();
-        Vector direction = VectorUtils.getVectorFromTo(from, location);
-        float vecYaw = VectorUtils.getVectorYaw(direction);
-        float vecPitch = VectorUtils.getVectorPitch(direction);
-        this.setRotation(vecYaw, vecPitch);
-    }
-
-    public void setRotation(float yaw, float pitch) {
-        this.setHeadRotation(yaw);
-        this.setYawPitch(yaw, pitch);
-    }
-
-    @Override
-    public void attack(Entity entity) {
-
-        // Filter non-living entities
-        if (!(entity instanceof EntityLiving)) {
-            return;
-        }
-
-        // Cache initial sprint state to restore it later
-        boolean wasSprinting = this.isSprinting();
-
-        // Damage & invulnerability predictions
-        boolean canDamage = ((float) this.b(GenericAttributes.ATTACK_DAMAGE)) + (EnchantmentManager.a(this.getItemInMainHand(), EnumMonsterType.UNDEFINED)) > 0.0F;
-        boolean invulnerable = (float) entity.noDamageTicks > (float) ((EntityLiving)entity).maxNoDamageTicks / 2.0F;
-        boolean knockback = canDamage && !invulnerable;
-
-        // Correct sprint state if knockback will be applied to target
-        if (knockback && isSprinting() && !freshSprint) {
-            this.setSprinting(false);
-        }
-        super.attack(entity);
-
-        // Simulate client-server desync and make bot sprint-reset soon
-        if (knockback && this.freshSprint) {
-            this.freshSprint = false;
-            this.sprintTicks = 0;
-        }
-
-        // Restore sprint state to not affect later movement
-        this.setSprinting(wasSprinting);
-
-    }
-
     @Override
     public boolean damageEntity(DamageSource damagesource, float f) {
 
@@ -272,12 +92,7 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         // Make server apply velocity instead of sending packet to non-existing client
         if (damaged && velocityChanged) {
             velocityChanged = false;
-            Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), new Runnable() {
-                @Override
-                public void run() {
-                    EntityPlayerBot.this.velocityChanged = true;
-                }
-            });
+            Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> EntityPlayerBot.this.velocityChanged = true);
         }
 
         return damaged;
@@ -295,20 +110,8 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         super.die(damagesource);
 
         // Wait for death animation to end and remove bot from world
-        Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), new Runnable() {
-            @Override
-            public void run() {
-                ((WorldServer) world).removeEntity(EntityPlayerBot.this);
-            }
-        }, 15);
+        Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> ((WorldServer) world).removeEntity(EntityPlayerBot.this), 15);
 
-    }
-
-    public void sendSoundEffect(EntityPlayer fromEntity, double x, double y, double z, SoundEffect soundEffect, SoundCategory soundCategory, float volume, float pitch) {
-        fromEntity.world.playSound(fromEntity, x, y, z, soundEffect, soundCategory, volume, pitch);
-        if (!(fromEntity instanceof EntityPlayerBot)) {
-            fromEntity.playerConnection.sendPacket(new PacketPlayOutNamedSoundEffect(soundEffect, soundCategory, x, y, z, volume, pitch));
-        }
     }
 
     public void sendPacketNearby(Packet<?> packet) {
@@ -316,32 +119,88 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
         chunkproviderserver.broadcast(this, packet);
     }
 
+    public void sendBlockHitAnimation(BlockHitState state) {}
+
+    @Override
+    public void setAI(BotAI ai) {
+        this.ai = ai;
+    }
+
+    @Override
+    public BotAI getAI() {
+        return this.ai;
+    }
+
+    public void setRotation(float yaw, float pitch) {
+        this.setHeadRotation(yaw);
+        this.setYawPitch(yaw, pitch);
+    }
+
+    public void swingArm() {
+        PacketPlayOutAnimation packetPlayOutAnimation = new PacketPlayOutAnimation(this, 0);
+        this.sendPacketNearby(packetPlayOutAnimation);
+    }
+
+    @Override
+    public AttackResult attack(org.bukkit.entity.LivingEntity entity, boolean freshSprint) {
+
+        EntityLiving nmsEntity = ((CraftLivingEntity) entity).getHandle();
+
+        AttackResult result = AttackResult.INVULNERABLE;
+
+        // Cache initial sprint state to restore it later
+        boolean wasSprinting = this.isSprinting();
+
+        // Damage & invulnerability predictions
+        boolean canDamage = ((float) this.b(GenericAttributes.ATTACK_DAMAGE)) + (EnchantmentManager.a(this.getItemInMainHand(), EnumMonsterType.UNDEFINED)) > 0.0F;
+        boolean invulnerable = (float) nmsEntity.noDamageTicks > (float) nmsEntity.maxNoDamageTicks / 2.0F;
+        boolean knockback = canDamage && !invulnerable;
+
+        // Correct sprint state if knockback will be applied to target
+        if (knockback && isSprinting() && !freshSprint) {
+            this.setSprinting(false);
+        }
+
+        // Attack entity
+        super.attack(nmsEntity);
+
+        if (knockback) {
+            result = AttackResult.KNOCKBACK;
+        }
+
+        // Restore sprint state to not affect later movement
+        this.setSprinting(wasSprinting);
+
+        return result;
+
+    }
+
+    @Override
+    public Location getEyeLocation() {
+        return this.getBukkitEntity().getEyeLocation();
+    }
+
+    @Override
+    public BoundingBox getBukkitBoundingBox() {
+        return this.getBukkitEntity().getBoundingBox();
+    }
+
     @Override
     public Player getTarget() {
+        if (target == null) {
+            return null;
+        }
         return target.getBukkitEntity();
     }
 
     @Override
     public void setTarget(Player target) {
         this.target = ((CraftPlayer) target).getHandle();
-        this.shouldAttack = true;
     }
 
     @Override
     public void clearTarget() {
-        this.shouldAttack = false;
         this.target = null;
-    }
-
-    @Override
-    public void setCPS(int cps) {
-        this.clicksPerSecond = cps;
-        this.clickDelay = cps == 0 ? 0 : 1000 / cps;
-    }
-
-    @Override
-    public int getCPS() {
-        return this.clicksPerSecond;
     }
 
     @Override
@@ -350,8 +209,18 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
     }
 
     @Override
+    public float getMoveForward() {
+        return this.forward;
+    }
+
+    @Override
     public void setMoveStrafe(float strafe) {
         this.strafe = strafe;
+    }
+
+    @Override
+    public float getMoveStrafe() {
+        return this.strafe;
     }
 
     @Override
@@ -365,29 +234,26 @@ public class EntityPlayerBot extends EntityPlayer implements Bot {
     }
 
     @Override
+    public boolean isSprinting() {
+        return super.isSprinting();
+    }
+
+    @Override
+    public void setSprinting(boolean sprinting) {
+        super.setSprinting(sprinting);
+    }
+
+    @Override
     public String getBotName() {
         return this.name;
     }
 
-    public void init() {
-        this.reach = 3.0F;
+    private void init() {
         this.forward = 0F;
         this.strafe = 0F;
-        this.clicksPerSecond = 0;
-        this.tickMsTimer = 0;
-        this.clickDelay = 0;
-        this.shouldAttack = false;
         this.canSprint = false;
-        this.freshSprint = true;
-        this.isSprintResetting = false;
-        this.sprintTicks = -1;
-        this.sprintResetMethod = WTAP;
         this.prevYaw = 0F;
         this.prevPitch = 0F;
-    }
-
-    public enum SprintResetMethod {
-        WTAP, STAP, BLOCKHIT
     }
 
     public enum BlockHitState {

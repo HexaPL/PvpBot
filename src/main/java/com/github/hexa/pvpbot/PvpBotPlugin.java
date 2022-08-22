@@ -14,7 +14,6 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         instance = this;
-        getLogger().info("PvpBot enabled!");
         getServer().getPluginManager().registerEvents(this, this);
         this.registerBotManager();
         this.getCommand("bot").setExecutor(new BotCommand());
@@ -24,7 +23,6 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        getLogger().info("PvpBot disabled!");
     }
 
     public static PvpBotPlugin getInstance() {
@@ -48,15 +46,15 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
         String nmsVersion = NMSUtils.getNMSVersion();
         switch (nmsVersion) {
             case "v1_16_R3":
-                this.getLogger().info("Registering BotManager for craftbukkit version v1_16_R3");
+                this.getLogger().info("Registering BotManager for Craftbukkit version v1_16_R3");
                 this.botManager = new com.github.hexa.pvpbot.v1_16_R3.BotManager();
                 return;
             case "v1_8_R3":
-                this.getLogger().info("Registering BotManager for craftbukkit version v1_8_R3");
+                this.getLogger().info("Registering BotManager for Craftbukkit version v1_8_R3");
                 this.botManager = new com.github.hexa.pvpbot.v1_8_R3.BotManager();
                 return;
             default:
-                this.getLogger().info("Server is running version " + nmsVersion + ", which is not supported!");
+                this.getLogger().info("Server is running Craftbukkit version " + nmsVersion + ", which is not supported!");
                 this.getLogger().info("Use v1_16_R3 or v1_8_R3 instead!");
                 this.getServer().getPluginManager().disablePlugin(this);
         }
