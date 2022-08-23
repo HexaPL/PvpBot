@@ -17,17 +17,11 @@ public interface ControllableBot extends Bot {
 
     public void swingArm();
 
-    public AttackResult attack(LivingEntity entity, boolean freshSprint);
+    public void attack(LivingEntity entity);
 
     public Location getEyeLocation();
 
     public BoundingBox getBukkitBoundingBox();
-
-    public Player getTarget();
-
-    public void setTarget(Player target);
-
-    public void clearTarget();
 
     public void setMoveForward(float forward);
 

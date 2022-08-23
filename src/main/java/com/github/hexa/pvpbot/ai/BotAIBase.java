@@ -1,10 +1,12 @@
 package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
+import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.VectorUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
@@ -15,7 +17,10 @@ import static com.github.hexa.pvpbot.ai.BotAIBase.SprintResetMethod.*;
 public class BotAIBase implements BotAI {
 
     private ControllableBot bot;
+    private Target target;
+    private boolean enabled;
 
+    private int ping;
     private boolean shouldAttack;
     private float reach;
     private int clicksPerSecond;
@@ -23,15 +28,21 @@ public class BotAIBase implements BotAI {
     private boolean freshSprint;
     private boolean isSprintResetting;
     private boolean sTapSlowdown;
-    private int sprintResetDelay = 3;
-    private int sprintResetLength = 4;
+    private int sprintResetDelay = 2;
+    private int sprintResetLength = 5;
     private SprintResetMethod sprintResetMethod;
     private int tickMsTimer;
     private int sprintTicks;
 
     public BotAIBase(ControllableBot bot) {
         this.bot = bot;
+        this.enabled = true;
+        this.initAI();
+    }
+
+    private void initAI() {
         this.reach = 3.0F;
+        this.ping = 0;
         this.clicksPerSecond = 0;
         this.clickDelay = 0;
         this.shouldAttack = false;
@@ -41,30 +52,44 @@ public class BotAIBase implements BotAI {
         this.sprintResetMethod = WTAP;
         this.tickMsTimer = 0;
         this.sprintTicks = -1;
-
-        //Test
-        this.setCPS(20);
     }
 
     @Override
     public void tick() {
-        this.shouldAttack = bot.getTarget() != null;
+        this.updateTarget();
         this.updateRotation();
         bot.setSprinting(bot.canSprint() && !this.isSprintResetting);
         this.doHitLogic();
         this.handleSprintResetting();
+        target.updateLocationCache();
+    }
+
+    protected void updateTarget() {
+        if (target == null) {
+            target = this.selectTarget();
+        }
+        if (target.delay != this.ping) {
+            target.delay = this.ping;
+            target.locationCacheSize = MathHelper.ceil(this.ping / 50F);
+            target.flushLocationCache();
+        }
+        target.update();
+    }
+
+    protected Target selectTarget() {
+        return new Target(bot.getOwner());
     }
 
     protected void updateRotation() {
-        if (bot.getTarget() != null) {
-            this.rotateToEntity(bot.getTarget());
+        if (target != null) {
+            this.rotateToTarget();
         }
     }
 
     protected void doHitLogic() {
 
         // Check for target and CPS
-        if (bot.getTarget() == null || !this.shouldAttack || this.clicksPerSecond == 0) {
+        if (target == null || /*!this.shouldAttack || */ this.clicksPerSecond == 0) {
             this.tickMsTimer = 0;
             return;
         }
@@ -77,7 +102,7 @@ public class BotAIBase implements BotAI {
 
         // Calculate distance to closest point of target's hitbox
         Location eyeLocation = bot.getEyeLocation();
-        BoundingBox targetBoundingBox = bot.getTarget().getBoundingBox();
+        BoundingBox targetBoundingBox = target.getDelayedBoundingBox();
         double distance = BoundingBoxUtils.distanceTo(eyeLocation, targetBoundingBox);
 
         // Check if target is close enough to swing or attack
@@ -93,7 +118,7 @@ public class BotAIBase implements BotAI {
             this.tickMsTimer -= this.clickDelay;
             bot.swingArm();
             if (result != null) {
-                this.attack(bot.getTarget());
+                this.attack(target.getPlayer());
             }
         }
 
@@ -116,7 +141,6 @@ public class BotAIBase implements BotAI {
 
         // Start sprint reset if needed
         if (bot.isSprinting() && bot.getMoveForward() > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
-            Bukkit.broadcastMessage("startSprintReset");
             bot.setSprinting(false);
             this.isSprintResetting = true;
             this.startSprintReset(this.sprintResetMethod);
@@ -125,7 +149,6 @@ public class BotAIBase implements BotAI {
 
         // End sprint reset if needed
         if (isSprintResetting && this.sprintTicks >= sprintResetLength) {
-            Bukkit.broadcastMessage("stopSprintReset");
             bot.setSprinting(true);
             this.freshSprint = true;
             this.isSprintResetting = false;
@@ -164,23 +187,36 @@ public class BotAIBase implements BotAI {
         }
     }
 
-    protected void attack(LivingEntity entity) {
+    protected void attack(Player player) {
 
-        AttackResult result = bot.attack(entity, this.freshSprint);
+        // Cache initial sprint state to restore it later
+        boolean wasSprinting = bot.isSprinting();
 
-        Bukkit.broadcastMessage("attackResult: " + result);
+        // Check if knockback will be applied to target
+        boolean invulnerable = player.getNoDamageTicks() > player.getMaximumNoDamageTicks() / 2;
+        boolean knockback = !invulnerable;
+
+        // Correct sprint state if needed
+        if (knockback && bot.isSprinting() && !freshSprint) {
+            bot.setSprinting(false);
+        }
+
+        // Attack entity
+        bot.attack(player);
 
         // Simulate client-server desync and make bot sprint-reset soon
-        if (result.equals(AttackResult.KNOCKBACK) && this.freshSprint) {
+        if (knockback && this.freshSprint) {
             this.freshSprint = false;
             this.sprintTicks = 0;
         }
 
+        // Restore sprint state to not affect later movement
+        bot.setSprinting(wasSprinting);
+
     }
 
-    protected void rotateToEntity(LivingEntity entity) {
-        Location location = entity.getEyeLocation();
-        this.rotateToLocation(location);
+    protected void rotateToTarget() {
+        this.rotateToLocation(target.getDelayedHeadLocation());
     }
 
     protected void rotateToLocation(Location location) {
@@ -198,6 +234,34 @@ public class BotAIBase implements BotAI {
 
     protected int getCPS() {
         return this.clicksPerSecond;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        if (enabled) {
+            this.initAI();
+        }
+    }
+
+    @Override
+    public Target getTarget() {
+        return target;
+    }
+
+    @Override
+    public int getPing() {
+        return this.ping;
+    }
+
+    @Override
+    public void setPing(int ping) {
+        this.ping = Math.max(ping, 0);
     }
 
     public enum SprintResetMethod {

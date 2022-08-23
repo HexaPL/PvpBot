@@ -12,6 +12,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftLivingEntity;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 
@@ -19,7 +20,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
     public String name;
     public EntityPlayer owner;
-    private EntityPlayer target;
     private BotAI ai;
 
     private float forward;
@@ -29,6 +29,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     private float prevPitch;
 
     private boolean canSprint;
+    private boolean hasPendingKnockback;
 
     public EntityPlayerBot(String name, EntityPlayer owner, MinecraftServer minecraftserver, WorldServer worldserver, GameProfile gameprofile, PlayerInteractManager playerinteractmanager) {
         super(minecraftserver, worldserver, gameprofile, playerinteractmanager);
@@ -49,7 +50,9 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         this.prevPitch = this.pitch;
 
         // Tick AI
-        this.ai.tick();
+        if (this.ai.isEnabled()) {
+            this.ai.tick();
+        }
 
         // Update move speed/direction
         this.ba = this.forward;
@@ -91,8 +94,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
         // Make server apply velocity instead of sending packet to non-existing client
         if (damaged && velocityChanged) {
-            velocityChanged = false;
-            Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> EntityPlayerBot.this.velocityChanged = true);
+            this.hasPendingKnockback = true;
         }
 
         return damaged;
@@ -112,6 +114,10 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         // Wait for death animation to end and remove bot from world
         Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> world.removeEntity(EntityPlayerBot.this), 15);
 
+    }
+
+    public void setMot(Vec3D vec3D) {
+        this.setMot(vec3D.a, vec3D.b, vec3D.c);
     }
 
     public void setMot(double x, double y, double z) {
@@ -153,36 +159,9 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     }
 
     @Override
-    public AttackResult attack(org.bukkit.entity.LivingEntity entity, boolean freshSprint) {
-
+    public void attack(LivingEntity entity) {
         EntityLiving nmsEntity = ((CraftLivingEntity) entity).getHandle();
-
-        AttackResult result = AttackResult.INVULNERABLE;
-
-        // Cache initial sprint state to restore it later
-        boolean wasSprinting = this.isSprinting();
-
-        // Damage & invulnerability predictions
-        boolean canDamage = ((float)this.getAttributeInstance(GenericAttributes.ATTACK_DAMAGE).getValue()) + (EnchantmentManager.a(this.bA(), EnumMonsterType.UNDEFINED)) > 0.0F;
-        boolean invulnerable = (float) nmsEntity.noDamageTicks > (float) nmsEntity.maxNoDamageTicks / 2.0F;
-        boolean knockback = canDamage && !invulnerable;
-
-        // Correct sprint state if knockback will be applied to target
-        if (knockback && isSprinting() && !freshSprint) {
-            this.setSprinting(false);
-        }
-
-        // Attack entity
         super.attack(nmsEntity);
-
-        if (knockback) {
-            result = AttackResult.KNOCKBACK;
-        }
-
-        // Restore sprint state to not affect later movement
-        this.setSprinting(wasSprinting);
-
-        return result;
     }
 
     @Override
@@ -193,21 +172,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     @Override
     public BoundingBox getBukkitBoundingBox() {
         return this.getBukkitEntity().getBoundingBox();
-    }
-
-    @Override
-    public Player getTarget() {
-        return target.getBukkitEntity();
-    }
-
-    @Override
-    public void setTarget(Player target) {
-        this.target = ((CraftPlayer) target).getHandle();
-    }
-
-    @Override
-    public void clearTarget() {
-        this.target = null;
     }
 
     @Override
@@ -253,6 +217,24 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     @Override
     public String getBotName() {
         return this.name;
+    }
+
+    @Override
+    public Player getOwner() {
+        return this.owner.getBukkitEntity();
+    }
+
+    @Override
+    public void setOwner(Player owner) {
+        this.owner = ((CraftPlayer) owner).getHandle();
+    }
+
+    public boolean hasPendingKnockback() {
+        return this.hasPendingKnockback;
+    }
+
+    public void clearPendingKnockback() {
+        this.hasPendingKnockback = false;
     }
 
     private void init() {

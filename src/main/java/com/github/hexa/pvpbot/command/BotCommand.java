@@ -33,7 +33,8 @@ public class BotCommand implements CommandExecutor {
             World world = location.getWorld();
             String name = args[1];
             sender.sendMessage("[PvpBot] Bot " + name + " created");
-            botManager.createBot(name, world, location, player);
+            Bot bot = botManager.createBot(name, world, location, player);
+            bot.getController().getAI().setEnabled(false);
             sender.sendMessage("[PvpBot] Bot " + name + " spawned");
             return true;
         }

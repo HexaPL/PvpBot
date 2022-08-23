@@ -20,7 +20,11 @@ public class VectorUtils {
     }
 
     public static Vector getVectorFromTo(Location from, Location to) {
-        return to.toVector().subtract(from.toVector());
+        return getVectorFromTo(from.toVector(), to.toVector());
+    }
+
+    public static Vector getVectorFromTo(Vector from, Vector to) {
+        return to.subtract(from);
     }
 
     public static Location getLocationZero() {
