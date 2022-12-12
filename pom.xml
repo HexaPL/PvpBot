@@ -34,7 +34,7 @@
         <repository>
             <id>maven-local</id>
             <name>Maven Local</name>
-            <url>file://C:/Users/hexag/.m2/repository/</url>
+            <url>file://C:/Users/pc/.m2/repository/</url>
         </repository>
     </repositories>
 

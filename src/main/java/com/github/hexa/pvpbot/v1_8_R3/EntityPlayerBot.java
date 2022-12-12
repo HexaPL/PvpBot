@@ -5,6 +5,7 @@ import com.github.hexa.pvpbot.ai.AttackResult;
 import com.github.hexa.pvpbot.ai.BotAI;
 import com.github.hexa.pvpbot.ai.BotAIBase;
 import com.github.hexa.pvpbot.ai.ControllableBot;
+import com.github.hexa.pvpbot.skins.Skin;
 import com.github.hexa.pvpbot.util.RotationUtils;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.server.v1_8_R3.*;
@@ -15,6 +16,8 @@ import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
+
+import java.net.URL;
 
 public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
@@ -28,7 +31,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     private float prevYaw;
     private float prevPitch;
 
-    private boolean canSprint;
     private boolean hasPendingKnockback;
 
     public EntityPlayerBot(String name, EntityPlayer owner, MinecraftServer minecraftserver, WorldServer worldserver, GameProfile gameprofile, PlayerInteractManager playerinteractmanager) {
@@ -195,16 +197,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     }
 
     @Override
-    public void canSprint(boolean canSprint) {
-        this.canSprint = canSprint;
-    }
-
-    @Override
-    public boolean canSprint() {
-        return this.canSprint;
-    }
-
-    @Override
     public boolean isSprinting() {
         return super.isSprinting();
     }
@@ -229,6 +221,26 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         this.owner = ((CraftPlayer) owner).getHandle();
     }
 
+    @Override
+    public Skin getSkin() {
+        return null;
+    }
+
+    @Override
+    public void setSkin(Player player) {
+
+    }
+
+    @Override
+    public void setSkin(Skin skin) {
+
+    }
+
+    @Override
+    public void setSkin(URL mineSkinUrl) {
+
+    }
+
     public boolean hasPendingKnockback() {
         return this.hasPendingKnockback;
     }
@@ -240,7 +252,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     private void init() {
         this.forward = 0F;
         this.strafe = 0F;
-        this.canSprint = false;
         this.prevYaw = 0F;
         this.prevPitch = 0F;
     }

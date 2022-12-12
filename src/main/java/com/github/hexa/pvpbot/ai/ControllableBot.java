@@ -31,10 +31,6 @@ public interface ControllableBot extends Bot {
 
     public float getMoveStrafe();
 
-    public void canSprint(boolean canSprint);
-
-    public boolean canSprint();
-
     public boolean isSprinting();
 
     public void setSprinting(boolean isSprinting);

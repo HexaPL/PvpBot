@@ -2,7 +2,6 @@ package com.github.hexa.pvpbot.command;
 
 import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
-import com.github.hexa.pvpbot.ai.ControllableBot;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -34,7 +33,7 @@ public class BotCommand implements CommandExecutor {
             String name = args[1];
             sender.sendMessage("[PvpBot] Bot " + name + " created");
             Bot bot = botManager.createBot(name, world, location, player);
-            bot.getController().getAI().setEnabled(false);
+            bot.getControllable().getAI().setEnabled(false);
             sender.sendMessage("[PvpBot] Bot " + name + " spawned");
             return true;
         }

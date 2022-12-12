@@ -1,8 +1,6 @@
 package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
-import com.github.hexa.pvpbot.util.MathHelper;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
@@ -35,7 +33,7 @@ public class Target {
 
     private BoundingBox calculateDelayedBoundingBox() {
 
-        if (this.delay  == 0) {
+        if (this.delay == 0) {
             return this.player.getBoundingBox();
         }
 
@@ -43,7 +41,7 @@ public class Target {
             return this.locationCache.get(delay / 50);
         }
 
-        int initialTick = MathHelper.floor((float) this.delay / 50);
+        int initialTick = locationCacheSize - 1;
         float partialTicks = (this.delay % 50) / 50F;
         BoundingBox box1;
         BoundingBox box2;
@@ -106,7 +104,7 @@ public class Target {
     }
 
     public HashMap<Integer, BoundingBox> getLocationCache() {
-        return this.locationCache;
+        return new HashMap<>(this.locationCache);
     }
 
 }
