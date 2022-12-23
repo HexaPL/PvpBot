@@ -2,6 +2,7 @@ package com.github.hexa.pvpbot.ai.controllers;
 
 import com.github.hexa.pvpbot.ai.BotAIBase;
 import com.github.hexa.pvpbot.util.VectorUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
@@ -19,7 +20,8 @@ public class AimController extends Controller {
     }
 
     protected void rotateToTarget() {
-        this.rotateToLocation(target.getDelayedHeadLocation());
+        Location location = ai.getTarget().getDelayedHeadLocation();
+        this.rotateToLocation(location);
     }
 
     protected void rotateToLocation(Location location) {

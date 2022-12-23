@@ -1,7 +1,10 @@
 package com.github.hexa.pvpbot.util;
 
+import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
+import net.minecraft.server.v1_8_R3.AxisAlignedBB;
 import org.bukkit.Location;
-import org.bukkit.util.BoundingBox;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftEntity;
+import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
 public class BoundingBoxUtils {
@@ -22,5 +25,21 @@ public class BoundingBoxUtils {
         Vector distance = VectorUtils.getVectorFromTo(center1, center2);
         return box1.shift(distance.multiply(partialTicks));
     }
+
+    public static BoundingBox getBoundingBox(Entity entity) {
+        if (NMSUtils.getNMSVersion().equals("v1_8_R3")) {
+            AxisAlignedBB box = ((CraftEntity) entity).getHandle().getBoundingBox();
+            return new BoundingBox(box.a, box.b, box.c, box.d, box.e, box.f);
+        } else {
+            org.bukkit.util.BoundingBox box = entity.getBoundingBox();
+            return bukkitToLegacy(box);
+        }
+    }
+
+    public static BoundingBox bukkitToLegacy(org.bukkit.util.BoundingBox box) {
+        return new BoundingBox(box.getMinX(), box.getMinY(), box.getMinZ(), box.getMaxX(), box.getMaxY(), box.getMaxZ());
+    }
+
+
 
 }

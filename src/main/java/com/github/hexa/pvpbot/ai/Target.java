@@ -1,9 +1,9 @@
 package com.github.hexa.pvpbot.ai;
 
+import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
@@ -22,7 +22,7 @@ public class Target {
         this.locationCacheSize = 0;
         this.flushLocationCache();
         this.delay = 0;
-        this.delayedBoundingBox = this.player.getBoundingBox();
+        this.delayedBoundingBox = BoundingBoxUtils.getBoundingBox(player);
         this.delayedHeadLocation = this.player.getEyeLocation();
     }
 
@@ -34,7 +34,7 @@ public class Target {
     private BoundingBox calculateDelayedBoundingBox() {
 
         if (this.delay == 0) {
-            return this.player.getBoundingBox();
+            return BoundingBoxUtils.getBoundingBox(player);
         }
 
         if (this.delay % 50 == 0) {
@@ -47,7 +47,7 @@ public class Target {
         BoundingBox box2;
 
         if (initialTick == 0) {
-            box1 = this.player.getBoundingBox();
+            box1 = BoundingBoxUtils.getBoundingBox(player);
             box2 = this.locationCache.get(1);
         } else {
             box1 = this.locationCache.get(initialTick);
@@ -68,7 +68,7 @@ public class Target {
             return;
         }
         for (int i = 1; i <= this.locationCacheSize; i++) {
-            this.locationCache.put(i, this.player.getBoundingBox());
+            this.locationCache.put(i, BoundingBoxUtils.getBoundingBox(player));
         }
     }
 
@@ -79,7 +79,7 @@ public class Target {
         for (int i = this.locationCacheSize; i > 1; i--) {
             this.locationCache.put(i, this.locationCache.get(i - 1));
         }
-        this.locationCache.put(1, this.player.getBoundingBox());
+        this.locationCache.put(1, BoundingBoxUtils.getBoundingBox(player));
     }
 
     public BoundingBox getDelayedBoundingBox() {

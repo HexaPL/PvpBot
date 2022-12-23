@@ -21,6 +21,8 @@ public interface BotManager {
 
     public boolean botExists(UUID uuid);
 
+    //public Bot[] getAllBots();
+
     public Bot getBotByName(String name);
 
     public Bot getBotByUUID(UUID uuid);
