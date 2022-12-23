@@ -1,24 +1,31 @@
 package com.github.hexa.pvpbot.ai.controllers;
 
+import com.github.hexa.pvpbot.BotManager;
+import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.BotAIBase;
+import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
+import com.github.hexa.pvpbot.util.MathHelper;
+import com.github.hexa.pvpbot.util.org.bukkit.util.RayTraceResult;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.util.BoundingBox;
-import org.bukkit.util.RayTraceResult;
 
 public class HitController extends Controller {
 
-    private ClickingMethod clickingMethod;
+    public ClickingMethod clickingMethod;
+    public int clicksPerSecond;
 
-    private int clicksPerSecond;
     private int clickDelay;
     private int tickMsTimer;
+
+    private long test;
 
     public HitController(BotAIBase ai) {
         super(ai);
         this.clicksPerSecond = 0;
         this.clickDelay = 0;
         this.tickMsTimer = 0;
+        test = System.currentTimeMillis();
     }
 
     @Override
@@ -29,7 +36,7 @@ public class HitController extends Controller {
     protected void handleClicking() {
 
         // Check for target and CPS
-        if (target == null || this.clicksPerSecond == 0) {
+        if (ai.getTarget() == null || this.clicksPerSecond == 0) {
             this.tickMsTimer = 0;
             return;
         }
@@ -42,8 +49,8 @@ public class HitController extends Controller {
 
         // Calculate distance to target
         Location eyeLocation = bot.getEyeLocation();
-        BoundingBox targetBoundingBox = target.getDelayedBoundingBox();
-        double distance = BoundingBoxUtils.distanceTo(bot.getEyeLocation(), target.getDelayedBoundingBox());
+        BoundingBox targetBoundingBox = ai.getTarget().getDelayedBoundingBox();
+        double distance = BoundingBoxUtils.distanceTo(bot.getEyeLocation(), ai.getTarget().getDelayedBoundingBox());
 
         // Check if target is close enough to swing or attack
         if (distance > ai.getReach() + 2) {
@@ -58,35 +65,39 @@ public class HitController extends Controller {
             this.tickMsTimer -= this.clickDelay;
             bot.swingArm();
             if (result != null) {
-                ai.attack(target.getPlayer());
+                ai.attack(ai.getTarget().getPlayer());
             }
         }
 
     }
 
-    public ClickingMethod getClickingMethod() {
-        return this.clickingMethod;
+    public void setClickingMethod(ClickingMethod clickingMethod, int cps) {
+        this.clickingMethod = clickingMethod;
+        this.setCPS(cps);
     }
 
-    public void setClickingMethod(ClickingMethod clickingMethod, int cps) {
+    public void setClickingMethod(ClickingMethod clickingMethod) {
         this.clickingMethod = clickingMethod;
     }
 
-    protected void setCPS(int cps) {
-        this.clicksPerSecond = cps;
+    public void setCPS(int cps) {
+        this.clicksPerSecond = MathHelper.clamp(cps, clickingMethod.minCps, clickingMethod.maxCps);
         this.clickDelay = cps == 0 ? 0 : 1000 / cps;
     }
 
-    protected int getCPS() {
-        return this.clicksPerSecond;
+    private void error(String reason) {
+        if (System.currentTimeMillis() - test < 1000) return;
+        Bukkit.broadcastMessage("ERROR: " + reason);
+        BotManager manager = PvpBotPlugin.getManager();
+        manager.removeBot(manager.getBotByName("test"));
     }
 
     public enum ClickingMethod {
 
-        NORMAL_CLICK(1, 11),
+        NORMAL_CLICK(2, 11),
         JITTER_CLICK(10, 15),
         BUTTERFLY_CLICK(15, 21),
-        AUTOCLICK(1, 50);
+        AUTOCLICK(1, 30);
 
         private int minCps;
         private int maxCps;

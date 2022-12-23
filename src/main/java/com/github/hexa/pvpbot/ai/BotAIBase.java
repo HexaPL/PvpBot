@@ -1,11 +1,20 @@
 package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.Bot;
+import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.controllers.AimController;
 import com.github.hexa.pvpbot.ai.controllers.HitController;
+import com.github.hexa.pvpbot.ai.controllers.HitController.*;
 import com.github.hexa.pvpbot.ai.controllers.MovementController;
+import com.github.hexa.pvpbot.events.PropertySetEvent;
 import com.github.hexa.pvpbot.util.MathHelper;
+import com.github.hexa.pvpbot.util.PropertyMap;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+
+import java.util.HashMap;
 
 public class BotAIBase implements BotAI {
 
@@ -13,9 +22,11 @@ public class BotAIBase implements BotAI {
     private Target target;
     private boolean enabled;
 
-    private AimController aimController;
-    private HitController hitController;
-    private MovementController movementController;
+    private PropertyMap properties;
+
+    public AimController aimController;
+    public HitController hitController;
+    public MovementController movementController;
 
     private int ping;
     private float reach;
@@ -23,6 +34,7 @@ public class BotAIBase implements BotAI {
     public BotAIBase(ControllableBot bot) {
         this.bot = bot;
         this.enabled = true;
+        PvpBotPlugin.getInstance().getServer().getPluginManager().registerEvents(new Listener(), PvpBotPlugin.getInstance());
         this.initAI();
     }
 
@@ -31,6 +43,11 @@ public class BotAIBase implements BotAI {
         this.updateTarget();
         this.updateControllers();
         target.updateLocationCache();
+    }
+
+    @Override
+    public PropertyMap getProperties() {
+        return properties;
     }
 
     protected void updateControllers() {
@@ -92,11 +109,6 @@ public class BotAIBase implements BotAI {
     @Override
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-        if (enabled) {
-            this.initAI();
-            // TODO Test
-            this.setPing(80);
-        }
     }
 
     @Override
@@ -126,16 +138,60 @@ public class BotAIBase implements BotAI {
         return this.reach;
     }
 
+    public HitController.ClickingMethod getClickingMethod() {
+        return hitController.clickingMethod;
+    }
+
+    public void setClickingMethod(HitController.ClickingMethod clickingMethod) {
+        hitController.setClickingMethod(clickingMethod);
+    }
+
+    public void setClickingMethod(HitController.ClickingMethod clickingMethod, int cps) {
+        hitController.setClickingMethod(clickingMethod, cps);
+    }
+
+    protected int getCPS() {
+        return hitController.clicksPerSecond;
+    }
+
     private void initAI() {
-        this.initControllers();
         this.reach = 3.0F;
         this.ping = 0;
+        this.initControllers();
+        this.initProperties();
+    }
+
+    private void initProperties() {
+        this.properties = new PropertyMap(bot);
+        properties.init("reach", 3.0F, Float.class);
+        properties.init("ping", 0, Integer.class);
+        properties.init("clickingMethod", ClickingMethod.NORMAL_CLICK, ClickingMethod.class);
+        properties.init("cps", 7, Integer.class);
     }
 
     private void initControllers() {
         this.aimController = new AimController(this);
         this.hitController = new HitController(this);
         this.movementController = new MovementController(this);
+    }
+
+    public class Listener implements org.bukkit.event.Listener {
+
+        @EventHandler
+        public void onPropertySet(PropertySetEvent event) {
+            if (event.getBot() != bot) {
+                return;
+            }
+            String property = event.getProperty();
+            if (property.equals("clickingMethod")) {
+                BotAIBase.this.setClickingMethod((ClickingMethod) event.getValue());
+            } else if (property.equals("cps")) {
+                BotAIBase.this.hitController.setCPS((int) event.getValue());
+            } else if (property.equals("reach")) {
+                BotAIBase.this.setReach((float) event.getValue());
+            }
+        }
+
     }
 
     public static class Direction {

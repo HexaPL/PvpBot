@@ -5,6 +5,7 @@ import com.github.hexa.pvpbot.skins.Skin;
 import org.bukkit.entity.Player;
 
 import java.net.URL;
+import java.util.HashMap;
 
 public interface Bot {
 
@@ -13,6 +14,7 @@ public interface Bot {
     default public ControllableBot getControllable() {
         return (ControllableBot) this;
     }
+
 
     public Player getOwner();
 

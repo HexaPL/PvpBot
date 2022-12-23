@@ -29,7 +29,17 @@ public class MovementController extends Controller {
 
     @Override
     public void update() {
+        this.handleMovement();
         this.handleSprintResetting();
+    }
+
+    protected void handleMovement() {
+        if (isSprintResetting || sTapSlowdown) {
+            return;
+        }
+        if (bot.getMoveForward() == 0) {
+            bot.setMoveForward(FORWARD);
+        }
     }
 
     protected void handleSprintResetting() {
@@ -77,7 +87,7 @@ public class MovementController extends Controller {
                 break;
             case STAP:
                 // Do some opposite force to slow down faster
-                bot.setMoveForward(-0.5F);
+                bot.setMoveForward(-0.2F);
                 this.sTapSlowdown = true;
                 break;
             case BLOCKHIT:
