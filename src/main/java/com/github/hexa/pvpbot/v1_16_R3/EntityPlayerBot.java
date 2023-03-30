@@ -15,6 +15,7 @@ import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 
 import java.net.URL;
 
@@ -89,7 +90,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
         // Set motion to 0 to simulate client-side knockback calculation
         if (!invulnerable && f > 0.0F) {
-            this.setMot(0, this.getMot().y, 0);
+            this.setMot(0, this.getMotion().getY(), 0);
         }
 
         boolean damaged = super.damageEntity(damagesource, f);
@@ -100,6 +101,11 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
         return damaged;
 
+    }
+
+    public Vector getMotion() {
+        Vec3D mot = this.getMot();
+        return new Vector(mot.x, mot.y, mot.z);
     }
 
     @Override

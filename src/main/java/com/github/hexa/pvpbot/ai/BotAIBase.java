@@ -4,17 +4,14 @@ import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.controllers.AimController;
 import com.github.hexa.pvpbot.ai.controllers.HitController;
-import com.github.hexa.pvpbot.ai.controllers.HitController.*;
+import com.github.hexa.pvpbot.ai.controllers.HitController.ClickingMethod;
 import com.github.hexa.pvpbot.ai.controllers.MovementController;
 import com.github.hexa.pvpbot.events.PropertySetEvent;
 import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.PropertyMap;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-
-import java.util.HashMap;
+import org.bukkit.util.Vector;
 
 public class BotAIBase implements BotAI {
 
@@ -30,10 +27,15 @@ public class BotAIBase implements BotAI {
 
     private int ping;
     private float reach;
+    private float pingAmplifier;
+    public int botCombo;
+    public int opponentCombo;
 
     public BotAIBase(ControllableBot bot) {
         this.bot = bot;
         this.enabled = true;
+        this.botCombo = 0;
+        this.opponentCombo = 0;
         PvpBotPlugin.getInstance().getServer().getPluginManager().registerEvents(new Listener(), PvpBotPlugin.getInstance());
         this.initAI();
     }
@@ -61,9 +63,9 @@ public class BotAIBase implements BotAI {
         if (target == null) {
             target = this.selectTarget();
         }
-        if (target.delay != this.ping) {
-            target.delay = this.ping;
-            target.locationCacheSize = MathHelper.ceil(this.ping / 50F);
+        if (target.delay != this.ping * pingAmplifier) {
+            target.delay = Math.round(this.ping * pingAmplifier);
+            target.locationCacheSize = MathHelper.ceil(target.delay / 50F);
             target.flushLocationCache();
         }
         target.update();
@@ -82,9 +84,17 @@ public class BotAIBase implements BotAI {
         boolean invulnerable = player.getNoDamageTicks() > player.getMaximumNoDamageTicks() / 2;
         boolean knockback = !invulnerable;
 
+        // Increase bot's combo counter
+        if (knockback) {
+            botCombo++;
+            opponentCombo = 0;
+        }
+
         // Correct sprint state if needed
         if (knockback && bot.isSprinting() && !movementController.isFreshSprint()) {
             bot.setSprinting(false);
+            Vector mot = bot.getMotion();
+            bot.setMot(mot.getX() * 0.6, mot.getY(), mot.getZ() * 0.6);
         }
 
         // Attack entity
@@ -109,6 +119,11 @@ public class BotAIBase implements BotAI {
     @Override
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+        if (!enabled) {
+            bot.setSprinting(false);
+            bot.setMoveForward(0);
+            bot.setMoveStrafe(0);
+        }
     }
 
     @Override
@@ -157,6 +172,7 @@ public class BotAIBase implements BotAI {
     private void initAI() {
         this.reach = 3.0F;
         this.ping = 0;
+        this.pingAmplifier = 1F;
         this.initControllers();
         this.initProperties();
     }
@@ -165,7 +181,8 @@ public class BotAIBase implements BotAI {
         this.properties = new PropertyMap(bot);
         properties.init("reach", 3.0F, Float.class);
         properties.init("ping", 0, Integer.class);
-        properties.init("clickingMethod", ClickingMethod.NORMAL_CLICK, ClickingMethod.class);
+        properties.init("pingAmplifier", 1F, Float.class);
+        properties.init("clickingMethod", ClickingMethod.AUTOCLICK, ClickingMethod.class);
         properties.init("cps", 7, Integer.class);
     }
 
@@ -189,6 +206,10 @@ public class BotAIBase implements BotAI {
                 BotAIBase.this.hitController.setCPS((int) event.getValue());
             } else if (property.equals("reach")) {
                 BotAIBase.this.setReach((float) event.getValue());
+            } else if (property.equals("ping")) {
+                BotAIBase.this.setPing((int) event.getValue());
+            } else if (property.equals("pingAmplifier")) {
+                BotAIBase.this.pingAmplifier = (float) event.getValue();
             }
         }
 

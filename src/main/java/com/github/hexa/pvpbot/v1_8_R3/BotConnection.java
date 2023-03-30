@@ -4,6 +4,7 @@ package com.github.hexa.pvpbot.v1_8_R3;
 import com.github.hexa.pvpbot.PvpBotPlugin;
 import net.minecraft.server.v1_8_R3.*;
 import org.bukkit.Bukkit;
+import org.bukkit.util.Vector;
 
 public class BotConnection extends PlayerConnection {
 
@@ -23,7 +24,7 @@ public class BotConnection extends PlayerConnection {
             return;
         }
         bot.clearPendingKnockback();
-        Vec3D knockback = bot.getMot();
+        Vector knockback = bot.getMotion();
         int tickDelay = Math.round(bot.getAI().getPing() / 50F);
         Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> bot.setMot(knockback), 1 + tickDelay);
     }

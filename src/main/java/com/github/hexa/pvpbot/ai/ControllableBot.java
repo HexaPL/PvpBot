@@ -2,10 +2,9 @@ package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.Bot;
 import org.bukkit.Location;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 
 public interface ControllableBot extends Bot {
 
@@ -32,6 +31,10 @@ public interface ControllableBot extends Bot {
     public float getMoveStrafe();
 
     public boolean isSprinting();
+
+    public void setMot(double x, double y, double z);
+
+    public Vector getMotion();
 
     public void setSprinting(boolean isSprinting);
 

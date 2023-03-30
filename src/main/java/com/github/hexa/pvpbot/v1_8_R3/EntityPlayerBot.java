@@ -1,7 +1,6 @@
 package com.github.hexa.pvpbot.v1_8_R3;
 
 import com.github.hexa.pvpbot.PvpBotPlugin;
-import com.github.hexa.pvpbot.ai.AttackResult;
 import com.github.hexa.pvpbot.ai.BotAI;
 import com.github.hexa.pvpbot.ai.BotAIBase;
 import com.github.hexa.pvpbot.ai.ControllableBot;
@@ -16,6 +15,7 @@ import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 
 import java.net.URL;
 
@@ -89,7 +89,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
         // Set motion to 0 to simulate client-side knockback calculation
         if (!invulnerable && f > 0.0F) {
-            this.setMot(0, this.getMot().b, 0);
+            this.setMot(0, this.getMotion().getY(), 0);
         }
 
         boolean damaged = super.damageEntity(damagesource, f);
@@ -97,6 +97,13 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         // Make server apply velocity instead of sending packet to non-existing client
         if (damaged && velocityChanged) {
             this.hasPendingKnockback = true;
+            // Also increase opponent's combo counter
+            if (this.ai instanceof BotAIBase) {
+                BotAIBase aiBase = (BotAIBase) this.ai;
+                aiBase.opponentCombo++;
+                aiBase.botCombo = 0;
+
+            }
         }
 
         return damaged;
@@ -118,8 +125,8 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
     }
 
-    public void setMot(Vec3D vec3D) {
-        this.setMot(vec3D.a, vec3D.b, vec3D.c);
+    public void setMot(Vector vector) {
+        this.setMot(vector.getX(), vector.getY(), vector.getZ());
     }
 
     public void setMot(double x, double y, double z) {
@@ -128,8 +135,8 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         this.motZ = z;
     }
 
-    public Vec3D getMot() {
-        return new Vec3D(this.motX, this.motY, this.motZ);
+    public Vector getMotion() {
+        return new Vector(this.motX, this.motY, this.motZ);
     }
 
     public void sendPacketNearby(Packet<?> packet) {

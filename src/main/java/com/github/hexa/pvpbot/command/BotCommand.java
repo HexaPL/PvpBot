@@ -64,21 +64,22 @@ public class BotCommand implements CommandExecutor {
                 return true;
             }
             String botList = "";
-            for(Map.Entry<String, Bot> entry : botManager.bots.entrySet()) {
+            for (Map.Entry<String, Bot> entry : botManager.bots.entrySet()) {
                 botList = String.join(botList, entry.getKey());
             }
             sender.sendMessage("[PvpBot] Bots: " + botList);
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("attack") && args.length > 1) {
+        if (args[0].equalsIgnoreCase("attack") && args.length > 2) {
             if (!botManager.botExists(args[1])) {
                 sender.sendMessage("[PvpBot] Bot " + args[1] + " does not exist!");
                 return true;
             }
             Bot bot = botManager.getBotByName(args[1]);
-            bot.getControllable().getAI().setEnabled(true);
-            // TODO why like that...
+            boolean attack = Boolean.parseBoolean(args[2]);
+            bot.getControllable().getAI().setEnabled(attack);
+            sender.sendMessage("[PvpBot] Attack set to " + bot.getControllable().getAI().isEnabled());
             return true;
         }
 

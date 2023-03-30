@@ -1,6 +1,7 @@
 package com.github.hexa.pvpbot.ai.controllers;
 
 import com.github.hexa.pvpbot.ai.BotAIBase;
+import org.bukkit.Bukkit;
 
 import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.FORWARD;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.SprintResetMethod.*;
@@ -9,8 +10,8 @@ public class MovementController extends Controller {
 
     private boolean canSprint;
     private boolean sTapSlowdown;
-    private int sprintResetDelay = 2;
-    private int sprintResetLength = 5;
+    private int sprintResetDelay;
+    private int sprintResetLength;
     private SprintResetMethod sprintResetMethod;
     private boolean freshSprint;
     private boolean isSprintResetting;
@@ -55,7 +56,9 @@ public class MovementController extends Controller {
             bot.setMoveForward(FORWARD);
         }
 
-        // Bukkit.broadcastMessage("handleSprintResetting - sprintTicks" + )
+        // Check for offensive/defensive sprint reset
+        this.sprintResetDelay = (this.ai.botCombo > 2 ? 1 : 4); // TODO - better sprint reset delays calculation
+        this.sprintResetLength = (this.ai.botCombo > 2 ? 6 : 1);
 
         // Start sprint reset if needed
         if (bot.isSprinting() && bot.getMoveForward() > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
@@ -63,6 +66,7 @@ public class MovementController extends Controller {
             this.isSprintResetting = true;
             this.startSprintReset(this.sprintResetMethod);
             this.sprintTicks = 0;
+            //Bukkit.broadcastMessage("Sprint reset: " + (this.ai.botCombo > 2 ? "offensive" : "defensive"));
         }
 
         // End sprint reset if needed
