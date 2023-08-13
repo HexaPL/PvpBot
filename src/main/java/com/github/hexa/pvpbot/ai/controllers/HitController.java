@@ -1,31 +1,33 @@
 package com.github.hexa.pvpbot.ai.controllers;
 
-import com.github.hexa.pvpbot.BotManager;
-import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.BotAIBase;
 import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.org.bukkit.util.RayTraceResult;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 
 public class HitController extends Controller {
 
     public ClickingMethod clickingMethod;
-    public int clicksPerSecond;
+    public int targetCps;
+    public int currentCps;
 
     private int clickDelay;
     private int tickMsTimer;
-
-    private long test;
+    private double minCpsRange;
+    private double maxCpsRange;
+    private double cpsRange;
 
     public HitController(BotAIBase ai) {
         super(ai);
-        this.clicksPerSecond = 0;
+        this.targetCps = 0;
+        this.currentCps = 0;
         this.clickDelay = 0;
         this.tickMsTimer = 0;
-        test = System.currentTimeMillis();
+        this.minCpsRange = 0;
+        this.maxCpsRange = 0;
+        this.cpsRange = 0;
     }
 
     @Override
@@ -36,7 +38,7 @@ public class HitController extends Controller {
     protected void handleClicking() {
 
         // Check for target and CPS
-        if (ai.getTarget() == null || this.clicksPerSecond == 0) {
+        if (ai.getTarget() == null || this.targetCps == 0) {
             this.tickMsTimer = 0;
             return;
         }
@@ -63,6 +65,7 @@ public class HitController extends Controller {
         // Swing hand and/or attack target, based on current click rate
         while (this.tickMsTimer >= this.clickDelay) {
             this.tickMsTimer -= this.clickDelay;
+            this.calculateNextClickDelay();
             bot.swingArm();
             if (result != null) {
                 ai.attack(ai.getTarget().getPlayer());
@@ -72,24 +75,45 @@ public class HitController extends Controller {
     }
 
     public void setClickingMethod(ClickingMethod clickingMethod, int cps) {
-        this.clickingMethod = clickingMethod;
+        this.setClickingMethod(clickingMethod);
         this.setCPS(cps);
     }
 
     public void setClickingMethod(ClickingMethod clickingMethod) {
         this.clickingMethod = clickingMethod;
+        this.setCPS(this.targetCps); // To ensure that CPS are in bound of new clicking method
     }
 
     public void setCPS(int cps) {
-        this.clicksPerSecond = MathHelper.clamp(cps, clickingMethod.minCps, clickingMethod.maxCps);
+        this.targetCps = MathHelper.clamp(cps, clickingMethod.minCps, clickingMethod.maxCps);
         this.clickDelay = cps == 0 ? 0 : 1000 / cps;
+        this.calculateCpsRange();
     }
 
-    private void error(String reason) {
-        if (System.currentTimeMillis() - test < 1000) return;
-        Bukkit.broadcastMessage("ERROR: " + reason);
-        BotManager manager = PvpBotPlugin.getManager();
-        manager.removeBot(manager.getBotByName("test"));
+    private void calculateCpsRange() {
+        switch (this.clickingMethod) {
+            case NORMAL_CLICK:
+            case JITTER_CLICK:
+                this.cpsRange = (0.4 + targetCps * 0.15) / 2;
+                this.minCpsRange = MathHelper.clamp(this.targetCps - this.cpsRange, this.clickingMethod.minCps, this.clickingMethod.maxCps);
+                this.maxCpsRange = MathHelper.clamp(this.targetCps + this.cpsRange, this.clickingMethod.minCps, this.clickingMethod.maxCps);
+                break;
+            case BUTTERFLY_CLICK:
+                break; // TODO - butterfly click cps range
+        }
+    }
+
+    private void calculateNextClickDelay() {
+        double nextCps;
+        int sign = MathHelper.random(0, 1) == 0 ? -1 : 1; // To determine if cps will increase or decrease
+        switch (this.clickingMethod) {
+            case NORMAL_CLICK:
+            case JITTER_CLICK:
+                nextCps = MathHelper.clamp(this.currentCps + this.cpsRange * 0.15 * sign, this.minCpsRange, this.maxCpsRange);
+                break;
+            case BUTTERFLY_CLICK:
+
+        }
     }
 
     public enum ClickingMethod {
@@ -116,5 +140,7 @@ public class HitController extends Controller {
         }
 
     }
+
+
 
 }

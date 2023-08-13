@@ -166,7 +166,7 @@ public class BotAIBase implements BotAI {
     }
 
     protected int getCPS() {
-        return hitController.clicksPerSecond;
+        return hitController.targetCps;
     }
 
     private void initAI() {
