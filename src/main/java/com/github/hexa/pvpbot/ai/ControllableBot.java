@@ -38,4 +38,6 @@ public interface ControllableBot extends Bot {
 
     public void setSprinting(boolean isSprinting);
 
+    public float getAttackCooldown();
+
 }

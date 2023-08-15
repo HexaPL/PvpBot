@@ -1,6 +1,5 @@
 package com.github.hexa.pvpbot;
 
-import com.github.hexa.pvpbot.util.NMSUtils;
 import com.github.hexa.pvpbot.command.BotCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.Listener;
@@ -15,7 +14,8 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         instance = this;
         getServer().getPluginManager().registerEvents(this, this);
-        this.registerBotManager();
+        this.getLogger().info("Registering BotManager for Craftbukkit version v1_16_R3");
+        this.botManager = new com.github.hexa.pvpbot.v1_16_R3.BotManager();
         this.getCommand("bot").setExecutor(new BotCommand());
         this.saveDefaultConfig();
         this.reloadConfig();
@@ -42,21 +42,4 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
         return instance.botManager;
     }
 
-    public void registerBotManager() {
-        String nmsVersion = NMSUtils.getNMSVersion();
-        switch (nmsVersion) {
-            case "v1_16_R3":
-                this.getLogger().info("Registering BotManager for Craftbukkit version v1_16_R3");
-                this.botManager = new com.github.hexa.pvpbot.v1_16_R3.BotManager();
-                return;
-            case "v1_8_R3":
-                this.getLogger().info("Registering BotManager for Craftbukkit version v1_8_R3");
-                this.botManager = new com.github.hexa.pvpbot.v1_8_R3.BotManager();
-                return;
-            default:
-                this.getLogger().info("Server is running Craftbukkit version " + nmsVersion + ", which is not supported!");
-                this.getLogger().info("Use v1_16_R3 or v1_8_R3 instead!");
-                this.getServer().getPluginManager().disablePlugin(this);
-        }
-    }
 }

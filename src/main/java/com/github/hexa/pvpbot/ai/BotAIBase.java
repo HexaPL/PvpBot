@@ -4,7 +4,6 @@ import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.controllers.AimController;
 import com.github.hexa.pvpbot.ai.controllers.HitController;
-import com.github.hexa.pvpbot.ai.controllers.HitController.ClickingMethod;
 import com.github.hexa.pvpbot.ai.controllers.MovementController;
 import com.github.hexa.pvpbot.events.PropertySetEvent;
 import com.github.hexa.pvpbot.util.MathHelper;
@@ -153,21 +152,6 @@ public class BotAIBase implements BotAI {
         return this.reach;
     }
 
-    public HitController.ClickingMethod getClickingMethod() {
-        return hitController.clickingMethod;
-    }
-
-    public void setClickingMethod(HitController.ClickingMethod clickingMethod) {
-        hitController.setClickingMethod(clickingMethod);
-    }
-
-    public void setClickingMethod(HitController.ClickingMethod clickingMethod, int cps) {
-        hitController.setClickingMethod(clickingMethod, cps);
-    }
-
-    protected int getCPS() {
-        return hitController.targetCps;
-    }
 
     private void initAI() {
         this.reach = 3.0F;
@@ -182,7 +166,6 @@ public class BotAIBase implements BotAI {
         properties.init("reach", 3.0F, Float.class);
         properties.init("ping", 0, Integer.class);
         properties.init("pingAmplifier", 1F, Float.class);
-        properties.init("clickingMethod", ClickingMethod.AUTOCLICK, ClickingMethod.class);
         properties.init("cps", 7, Integer.class);
     }
 
@@ -200,11 +183,7 @@ public class BotAIBase implements BotAI {
                 return;
             }
             String property = event.getProperty();
-            if (property.equals("clickingMethod")) {
-                BotAIBase.this.setClickingMethod((ClickingMethod) event.getValue());
-            } else if (property.equals("cps")) {
-                BotAIBase.this.hitController.setCPS((int) event.getValue());
-            } else if (property.equals("reach")) {
+            if (property.equals("reach")) {
                 BotAIBase.this.setReach((float) event.getValue());
             } else if (property.equals("ping")) {
                 BotAIBase.this.setPing((int) event.getValue());

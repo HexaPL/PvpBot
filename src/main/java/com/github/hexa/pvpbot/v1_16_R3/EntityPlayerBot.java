@@ -66,7 +66,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         super.playerTick();
 
         // Send rotation packets again to make head movement smooth
-        this.sendRotationPackets(owner);
+        //this.sendRotationPackets(owner);
 
         //tickEndMS = SystemUtils.getTimeMillis();
     }
@@ -194,6 +194,11 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     @Override
     public void setSprinting(boolean sprinting) {
         super.setSprinting(sprinting);
+    }
+
+    @Override
+    public float getAttackCooldown() {
+        return super.getAttackCooldown(0.5F);
     }
 
     @Override
