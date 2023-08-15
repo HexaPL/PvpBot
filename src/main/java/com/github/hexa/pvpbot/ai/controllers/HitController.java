@@ -17,7 +17,6 @@ public class HitController extends Controller {
 
         // Simple hit system
         // Check attack cooldown
-        //test
         if (this.bot.getAttackCooldown() != 1.0F) {
             return;
         }
