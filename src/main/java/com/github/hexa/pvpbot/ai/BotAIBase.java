@@ -8,6 +8,7 @@ import com.github.hexa.pvpbot.ai.controllers.MovementController;
 import com.github.hexa.pvpbot.events.PropertySetEvent;
 import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.PropertyMap;
+import net.minecraft.server.v1_16_R3.DamageSource;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.util.Vector;
@@ -33,8 +34,6 @@ public class BotAIBase implements BotAI {
     public BotAIBase(ControllableBot bot) {
         this.bot = bot;
         this.enabled = true;
-        this.botCombo = 0;
-        this.opponentCombo = 0;
         PvpBotPlugin.getInstance().getServer().getPluginManager().registerEvents(new Listener(), PvpBotPlugin.getInstance());
         this.initAI();
     }
@@ -44,6 +43,13 @@ public class BotAIBase implements BotAI {
         this.updateTarget();
         this.updateControllers();
         target.updateLocationCache();
+    }
+
+    // Called whenever bot get damaged
+    @Override
+    public void damageEntity(DamageSource damageSource) {
+        this.botCombo = 0;
+        this.opponentCombo++; //temporary
     }
 
     @Override
@@ -122,6 +128,8 @@ public class BotAIBase implements BotAI {
             bot.setSprinting(false);
             bot.setMoveForward(0);
             bot.setMoveStrafe(0);
+            this.botCombo = 0;
+            this.opponentCombo = 0;
         }
     }
 

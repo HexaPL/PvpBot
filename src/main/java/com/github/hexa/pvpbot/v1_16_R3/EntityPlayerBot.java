@@ -97,6 +97,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
         if (damaged && velocityChanged) {
             this.hasPendingKnockback = true;
+            this.getAI().damageEntity(damagesource);
         }
 
         return damaged;
@@ -127,8 +128,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         ChunkProviderServer chunkproviderserver = ((WorldServer)this.world).getChunkProvider();
         chunkproviderserver.broadcast(this, packet);
     }
-
-    public void sendBlockHitAnimation(BlockHitState state) {}
 
     @Override
     public void setAI(BotAI ai) {
@@ -250,10 +249,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         this.prevYaw = 0F;
         this.prevPitch = 0F;
         this.hasPendingKnockback = false;
-    }
-
-    public enum BlockHitState {
-        START, STOP
     }
 
 }

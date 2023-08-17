@@ -9,6 +9,7 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
     public static PvpBotPlugin instance;
     public BotManager botManager;
     public static FileConfiguration CONFIG;
+    public static boolean debug = true;
 
     @Override
     public void onEnable() {

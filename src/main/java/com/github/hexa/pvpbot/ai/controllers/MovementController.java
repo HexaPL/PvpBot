@@ -47,9 +47,9 @@ public class MovementController extends Controller {
             return;
         }
 
-        // Hardcoded sprint reset time values
+        // Check for offensive/defensive sprint reset
         this.sprintResetDelay = 1;
-        this.sprintResetLength = 6;
+        this.sprintResetLength = (this.ai.botCombo > 1 ? 9 : 1); // 9 = optimal length for straightline combo with sword
 
         // Start sprint reset if needed
         if (bot.isSprinting() && bot.getMoveForward() > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
