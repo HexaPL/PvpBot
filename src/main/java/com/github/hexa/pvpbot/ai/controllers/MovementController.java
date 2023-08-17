@@ -1,15 +1,13 @@
 package com.github.hexa.pvpbot.ai.controllers;
 
 import com.github.hexa.pvpbot.ai.BotAIBase;
-import org.bukkit.Bukkit;
 
-import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.FORWARD;
+import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.SprintResetMethod.*;
 
 public class MovementController extends Controller {
 
     private boolean canSprint;
-    private boolean sTapSlowdown;
     private int sprintResetDelay;
     private int sprintResetLength;
     private SprintResetMethod sprintResetMethod;
@@ -21,7 +19,6 @@ public class MovementController extends Controller {
     public MovementController(BotAIBase ai) {
         super(ai);
         this.canSprint = true;
-        this.sTapSlowdown = false;
         this.sprintResetMethod = WTAP;
         this.sprintTicks = -1;
         this.freshSprint = true;
@@ -35,10 +32,10 @@ public class MovementController extends Controller {
     }
 
     protected void handleMovement() {
-        if (isSprintResetting || sTapSlowdown) {
+        if (isSprintResetting) {
             return;
         }
-        if (bot.getMoveForward() == 0) {
+        if (bot.getMoveForward() != FORWARD) {
             bot.setMoveForward(FORWARD);
         }
     }
@@ -50,15 +47,9 @@ public class MovementController extends Controller {
             return;
         }
 
-        // Reset s-tap slowdown to not move backwards
-        if (this.sTapSlowdown) {
-            this.sTapSlowdown = false;
-            bot.setMoveForward(FORWARD);
-        }
-
-        // Check for offensive/defensive sprint reset
-        this.sprintResetDelay = (this.ai.botCombo > 2 ? 1 : 4); // TODO - better sprint reset delays calculation
-        this.sprintResetLength = (this.ai.botCombo > 2 ? 6 : 1);
+        // Hardcoded sprint reset time values
+        this.sprintResetDelay = 1;
+        this.sprintResetLength = 6;
 
         // Start sprint reset if needed
         if (bot.isSprinting() && bot.getMoveForward() > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
@@ -66,7 +57,6 @@ public class MovementController extends Controller {
             this.isSprintResetting = true;
             this.startSprintReset(this.sprintResetMethod);
             this.sprintTicks = 0;
-            //Bukkit.broadcastMessage("Sprint reset: " + (this.ai.botCombo > 2 ? "offensive" : "defensive"));
         }
 
         // End sprint reset if needed
@@ -86,17 +76,10 @@ public class MovementController extends Controller {
 
         switch (method) {
             case WTAP:
-                // Simply simulate releasing W key
                 bot.setMoveForward(0);
                 break;
             case STAP:
-                // Do some opposite force to slow down faster
-                bot.setMoveForward(-0.2F);
-                this.sTapSlowdown = true;
-                break;
-            case BLOCKHIT:
-                // Block sword
-                // TODO - blockhit
+                bot.setMoveForward(BACKWARD);
                 break;
         }
 

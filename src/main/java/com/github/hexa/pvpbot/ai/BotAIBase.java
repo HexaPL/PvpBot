@@ -166,7 +166,6 @@ public class BotAIBase implements BotAI {
         properties.init("reach", 3.0F, Float.class);
         properties.init("ping", 0, Integer.class);
         properties.init("pingAmplifier", 1F, Float.class);
-        properties.init("cps", 7, Integer.class);
     }
 
     private void initControllers() {

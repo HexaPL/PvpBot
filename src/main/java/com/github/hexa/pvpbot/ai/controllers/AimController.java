@@ -14,9 +14,10 @@ public class AimController extends Controller {
 
     @Override
     public void update() {
-        if (ai.getTarget() != null) {
-            this.rotateToTarget();
+        if (ai.getTarget() == null) {
+            return;
         }
+        this.rotateToTarget();
     }
 
     protected void rotateToTarget() {
