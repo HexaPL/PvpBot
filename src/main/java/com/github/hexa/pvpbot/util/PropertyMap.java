@@ -55,6 +55,18 @@ public class PropertyMap {
         return map.get(property);
     }
 
+    public int getInt(String property) {
+        return (int) get(property);
+    }
+
+    public String getString(String property) {
+        return (String) get(property);
+    }
+
+    public boolean getBoolean(String property) {
+        return (boolean) get(property);
+    }
+
     public static <T> T parseString(String s, Class<T> clazz) {
         try {
             return clazz.getConstructor(new Class[] {String.class }).newInstance(s);

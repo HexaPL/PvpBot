@@ -32,10 +32,14 @@ public class BotCommand implements CommandExecutor {
         com.github.hexa.pvpbot.BotManager botManager = PvpBotPlugin.getManager();
 
         if (args[0].equalsIgnoreCase("create") && args.length > 1) {
+            String name = args[1];
+            if (botManager.botExists(name)) {
+                sender.sendMessage("[PvpBot] Bot " + name + " already exists!");
+                return true;
+            }
             Player player = (Player) sender;
             Location location = player.getLocation();
             World world = location.getWorld();
-            String name = args[1];
             sender.sendMessage("[PvpBot] Bot " + name + " created");
             Bot bot = botManager.createBot(name, world, location, player);
             bot.getControllable().getAI().setEnabled(false);

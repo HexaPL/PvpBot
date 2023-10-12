@@ -1,15 +1,18 @@
 package com.github.hexa.pvpbot;
 
 import com.github.hexa.pvpbot.command.BotCommand;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class PvpBotPlugin extends JavaPlugin implements Listener {
     public static PvpBotPlugin instance;
     public BotManager botManager;
     public static FileConfiguration CONFIG;
-    public static boolean debug = true;
+    public static boolean debug = false;
 
     @Override
     public void onEnable() {

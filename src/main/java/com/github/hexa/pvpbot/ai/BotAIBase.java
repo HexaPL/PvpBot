@@ -25,6 +25,8 @@ public class BotAIBase implements BotAI {
     public HitController hitController;
     public MovementController movementController;
 
+    public static final int basePingDelay = 125;
+
     private int ping;
     private float reach;
     private float pingAmplifier;
@@ -68,8 +70,9 @@ public class BotAIBase implements BotAI {
         if (target == null) {
             target = this.selectTarget();
         }
-        if (target.delay != this.ping * pingAmplifier) {
-            target.delay = Math.round(this.ping * pingAmplifier);
+        int currentDelay = this.ping + basePingDelay;
+        if (currentDelay != target.delay) {
+            target.delay = currentDelay;
             target.locationCacheSize = MathHelper.ceil(target.delay / 50F);
             target.flushLocationCache();
         }
@@ -160,7 +163,6 @@ public class BotAIBase implements BotAI {
         return this.reach;
     }
 
-
     private void initAI() {
         this.reach = 3.0F;
         this.ping = 0;
@@ -173,7 +175,7 @@ public class BotAIBase implements BotAI {
         this.properties = new PropertyMap(bot);
         properties.init("reach", 3.0F, Float.class);
         properties.init("ping", 0, Integer.class);
-        properties.init("pingAmplifier", 1F, Float.class);
+        properties.init("jumpReset", false, Boolean.class);
     }
 
     private void initControllers() {

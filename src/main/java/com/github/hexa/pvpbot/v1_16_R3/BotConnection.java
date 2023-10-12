@@ -1,6 +1,7 @@
 package com.github.hexa.pvpbot.v1_16_R3;
 
 import com.github.hexa.pvpbot.PvpBotPlugin;
+import com.github.hexa.pvpbot.ai.BotAIBase;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
 
@@ -24,7 +25,14 @@ public class BotConnection extends PlayerConnection {
         bot.clearPendingKnockback();
         Vec3D knockback = bot.getMot();
         int tickDelay = Math.round(bot.getAI().getPing() / 50F);
-        Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> bot.setMot(knockback), 1 + tickDelay);
+        Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> {
+            bot.setMot(knockback);
+            // Jump reset
+            boolean jumpReset = bot.getAI().getProperties().getBoolean("jumpReset");
+            if (jumpReset && bot.isOnGround()) {
+                bot.jump();
+            }
+        }, 1 + tickDelay);
     }
 
 }
