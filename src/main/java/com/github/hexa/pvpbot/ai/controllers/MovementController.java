@@ -4,25 +4,33 @@ import com.github.hexa.pvpbot.ai.BotAIBase;
 
 import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.SprintResetMethod.*;
+import static com.github.hexa.pvpbot.ai.controllers.MovementController.ComboMethod.*;
 
 public class MovementController extends Controller {
+
+    private SprintResetMethod sprintResetMethod;
+    private ComboMethod comboMethod;
 
     private boolean canSprint;
     private int sprintResetDelay;
     private int sprintResetLength;
-    private SprintResetMethod sprintResetMethod;
     private boolean freshSprint;
     private boolean isSprintResetting;
 
     private int sprintTicks;
+    private int lastTickCombo;
+
+    public int test = 6;
 
     public MovementController(BotAIBase ai) {
         super(ai);
-        this.canSprint = true;
         this.sprintResetMethod = WTAP;
+        this.comboMethod = STRAIGHTLINE;
+        this.canSprint = true;
         this.sprintTicks = -1;
         this.freshSprint = true;
         this.isSprintResetting = false;
+        this.lastTickCombo = 0;
     }
 
     @Override
@@ -32,12 +40,30 @@ public class MovementController extends Controller {
     }
 
     protected void handleMovement() {
-        if (isSprintResetting) {
-            return;
-        }
-        if (bot.getMoveForward() != FORWARD) {
+
+        if (bot.getMoveForward() != FORWARD && !isSprintResetting) {
             bot.setMoveForward(FORWARD);
         }
+
+        // Combo movement
+        if (this.ai.botCombo > 1) {
+            switch (comboMethod) {
+                case STRAIGHTLINE:
+                    if (bot.getMoveForward() != FORWARD && !isSprintResetting) {
+                        bot.setMoveForward(FORWARD);
+                    }
+                    break;
+                case SWITCH:
+                    if (this.lastTickCombo < this.ai.botCombo) {
+                        bot.setMoveStrafe(bot.getMoveStrafe() == RIGHT ? LEFT : RIGHT);
+                    }
+                    break;
+            }
+        } else {
+            bot.setMoveStrafe(0);
+        }
+
+        this.lastTickCombo = this.ai.botCombo;
     }
 
     protected void handleSprintResetting() {
@@ -47,9 +73,23 @@ public class MovementController extends Controller {
             return;
         }
 
-        // Check for offensive/defensive sprint reset
+        // Calculate sprint reset time values
+        // Hardcoded values for 'infinite' combo
+        // TODO - delay calculation based on distance and velocity
         this.sprintResetDelay = 1;
-        this.sprintResetLength = (this.ai.botCombo > 1 ? 9 : 1); // 9 = optimal length for straightline combo with sword
+        if (this.ai.botCombo > 1) { // In combo
+            if (sprintResetMethod == WTAP) {
+                if (this.comboMethod == STRAIGHTLINE) {
+                    this.sprintResetLength = 9;
+                } else if (this.comboMethod == SWITCH) {
+                    this.sprintResetLength = test;
+                }
+            } else if (sprintResetMethod == STAP) {
+                this.sprintResetLength = 6;
+            }
+        } else { // In trade
+            this.sprintResetLength = 6;
+        }
 
         // Start sprint reset if needed
         if (bot.isSprinting() && bot.getMoveForward() > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
@@ -88,6 +128,7 @@ public class MovementController extends Controller {
     protected void endSprintReset(SprintResetMethod method) {
         switch (method) {
             case WTAP:
+            case STAP:
                 bot.setMoveForward(FORWARD);
         }
     }
@@ -129,7 +170,11 @@ public class MovementController extends Controller {
     }
 
     public enum SprintResetMethod {
-        WTAP, STAP, BLOCKHIT
+        WTAP, STAP
+    }
+
+    public enum ComboMethod {
+        STRAIGHTLINE, CIRCLE, SWITCH, WASD, AD_TAP, UPPERCUT
     }
 
 }

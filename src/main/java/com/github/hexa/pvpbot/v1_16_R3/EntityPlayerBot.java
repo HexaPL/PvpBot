@@ -5,11 +5,14 @@ import com.github.hexa.pvpbot.ai.BotAI;
 import com.github.hexa.pvpbot.ai.BotAIBase;
 import com.github.hexa.pvpbot.ai.ControllableBot;
 import com.github.hexa.pvpbot.skins.Skin;
+import com.github.hexa.pvpbot.util.BoundingBoxUtils;
+import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.RotationUtils;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftLivingEntity;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.entity.LivingEntity;
@@ -65,10 +68,30 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         super.tick();
         super.playerTick();
 
-        // Send rotation packets again to make head movement smooth
-        //this.sendRotationPackets(owner);
-
+        pingDelayDebug();
         //tickEndMS = SystemUtils.getTimeMillis();
+    }
+
+    private void pingDelayDebug() {
+        long time = System.currentTimeMillis();
+        if (MathHelper.roundToNumber(time, 50) % 500 != 0) {
+            return;
+        }
+        if (owner.getBukkitEntity().getInventory().getItemInOffHand().getType() != Material.GOLD_NUGGET) {
+            return;
+        }
+        Vector mot = this.getMotion();
+        mot.setY(0);
+        String velocity = "" + MathHelper.roundTo((float) mot.length(), 4);
+        float reach = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.getBukkitEntity().getEyeLocation(), BoundingBoxUtils.getBoundingBox(owner.getBukkitEntity())), 3);
+        String timeS = String.valueOf(time);
+        timeS = timeS.substring(timeS.length() - 5);
+        if (this.getAI().getTarget() == null) {
+            ((BotAIBase)this.getAI()).selectTarget();
+        }
+        Location loc = ((BotAIBase)getAI()).hitController.getPingPredictedLocation(this.getEyeLocation());
+        float reach2 = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(loc/*this.getBukkitEntity().getEyeLocation()*/, this.getAI().getTarget().getDelayedBoundingBox()), 3);
+        Bukkit.broadcastMessage("SERVER TICK " + owner.displayName + " " + velocity + ", reach " + reach + "(" + reach2 + ")" + ", ms " + timeS);
     }
 
     public void sendRotationPackets(EntityPlayer target) {

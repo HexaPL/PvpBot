@@ -1,7 +1,6 @@
 package com.github.hexa.pvpbot.v1_16_R3;
 
 import com.github.hexa.pvpbot.PvpBotPlugin;
-import com.github.hexa.pvpbot.ai.BotAIBase;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
 

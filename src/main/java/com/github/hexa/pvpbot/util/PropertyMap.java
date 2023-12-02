@@ -9,28 +9,28 @@ import java.util.HashMap;
 
 public class PropertyMap {
 
-    private HashMap<String, Object> map;
+    private HashMap<String, Object> properties;
     private HashMap<String, Class<?>> types;
     private Bot bot;
 
     public PropertyMap(Bot bot) {
         this.bot = bot;
-        map = new HashMap<>();
+        properties = new HashMap<>();
         types = new HashMap<>();
     }
 
-    public void init(String property, Object initialValue, Class<?> type) {
+    public void set(String property, Object initialValue, Class<?> type) {
         PropertySetEvent event = new PropertySetEvent(bot, property, initialValue);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
             return;
         }
-        map.put(event.getProperty(), event.getValue());
+        properties.put(event.getProperty(), event.getValue());
         types.put(event.getProperty(), type);
     }
 
     public boolean set(String property, Object value) {
-        if (!map.containsKey(property)) {
+        if (!properties.containsKey(property)) {
             return false;
         }
         PropertySetEvent event = new PropertySetEvent(bot, property, value);
@@ -38,7 +38,7 @@ public class PropertyMap {
         if (event.isCancelled()) {
             return false;
         }
-        map.put(event.getProperty(), event.getValue());
+        properties.put(event.getProperty(), event.getValue());
         return true;
     }
 
@@ -47,16 +47,19 @@ public class PropertyMap {
             return false;
         }
         Class<?> propertyType = types.get(property);
-        Object parsedValue = parseString(value, propertyType);
-        return set(property, parsedValue);
+        return set(property, parseString(value, propertyType));
     }
 
     public Object get(String property) {
-        return map.get(property);
+        return properties.get(property);
     }
 
     public int getInt(String property) {
         return (int) get(property);
+    }
+
+    public float getFloat(String property) {
+        return (float) get(property);
     }
 
     public String getString(String property) {
@@ -69,7 +72,7 @@ public class PropertyMap {
 
     public static <T> T parseString(String s, Class<T> clazz) {
         try {
-            return clazz.getConstructor(new Class[] {String.class }).newInstance(s);
+            return clazz.getConstructor(new Class[] {String.class}).newInstance(s);
         } catch (InstantiationException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }

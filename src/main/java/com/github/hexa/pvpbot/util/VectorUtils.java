@@ -31,4 +31,8 @@ public class VectorUtils {
         return new Location(Bukkit.getWorlds().get(0), 0, 0, 0, 0, 0);
     }
 
+    public static Vector motionToBlockSpeed(Vector motion) {
+        return motion.multiply(1.835);
+    }
+
 }

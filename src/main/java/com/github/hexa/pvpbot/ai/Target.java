@@ -1,5 +1,7 @@
 package com.github.hexa.pvpbot.ai;
 
+import com.github.hexa.pvpbot.Bot;
+import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import org.bukkit.Location;
@@ -11,14 +13,16 @@ import java.util.HashMap;
 public class Target {
 
     private Player player;
+    private Bot bot;
     private HashMap<Integer, BoundingBox> locationCache;
     public int locationCacheSize;
     protected int delay;
     private BoundingBox delayedBoundingBox;
     private Location delayedHeadLocation;
 
-    public Target(Player player) {
+    public Target(Player player, Bot bot) {
         this.player = player;
+        this.bot = bot;
         this.locationCacheSize = 0;
         this.flushLocationCache();
         this.delay = 0;
@@ -27,8 +31,21 @@ public class Target {
     }
 
     public void update() {
+        updateDelays();
         this.delayedBoundingBox = calculateDelayedBoundingBox();
         this.delayedHeadLocation = calculateDelayedHeadLocation();
+    }
+
+    private void updateDelays() {
+        int ping = bot.getControllable().getAI().getPing();
+        int currentDelay =
+                BotAIBase.basePingDelay + // 150 ms (3 ticks) - base delay of another player from client perspective
+                ping; // time needed for movement packets to go from server to client
+        if (currentDelay != this.delay) {
+            this.delay = currentDelay;
+            this.locationCacheSize = MathHelper.ceil(this.delay / 50F);
+            this.flushLocationCache();
+        }
     }
 
     private BoundingBox calculateDelayedBoundingBox() {

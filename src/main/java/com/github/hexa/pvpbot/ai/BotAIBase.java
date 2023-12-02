@@ -25,18 +25,16 @@ public class BotAIBase implements BotAI {
     public HitController hitController;
     public MovementController movementController;
 
-    public static final int basePingDelay = 125;
+    public static final int basePingDelay = 150;
 
     private int ping;
-    private float reach;
-    private float pingAmplifier;
     public int botCombo;
     public int opponentCombo;
 
     public BotAIBase(ControllableBot bot) {
         this.bot = bot;
         this.enabled = true;
-        PvpBotPlugin.getInstance().getServer().getPluginManager().registerEvents(new Listener(), PvpBotPlugin.getInstance());
+        //PvpBotPlugin.getInstance().getServer().getPluginManager().registerEvents(new Listener(), PvpBotPlugin.getInstance());
         this.initAI();
     }
 
@@ -51,7 +49,7 @@ public class BotAIBase implements BotAI {
     @Override
     public void damageEntity(DamageSource damageSource) {
         this.botCombo = 0;
-        this.opponentCombo++; //temporary
+        this.opponentCombo++; // TODO - detect opponent from damageSource
     }
 
     @Override
@@ -70,17 +68,12 @@ public class BotAIBase implements BotAI {
         if (target == null) {
             target = this.selectTarget();
         }
-        int currentDelay = this.ping + basePingDelay;
-        if (currentDelay != target.delay) {
-            target.delay = currentDelay;
-            target.locationCacheSize = MathHelper.ceil(target.delay / 50F);
-            target.flushLocationCache();
-        }
+
         target.update();
     }
 
-    protected Target selectTarget() {
-        return new Target(bot.getOwner());
+    public Target selectTarget() {
+        return new Target(bot.getOwner(), bot);
     }
 
     public void attack(Player player) {
@@ -98,7 +91,7 @@ public class BotAIBase implements BotAI {
             opponentCombo = 0;
         }
 
-        // Correct sprint state if needed
+        // Update sprint state if needed
         if (knockback && bot.isSprinting() && !movementController.isFreshSprint()) {
             bot.setSprinting(false);
             Vector mot = bot.getMotion();
@@ -143,12 +136,12 @@ public class BotAIBase implements BotAI {
 
     @Override
     public int getPing() {
-        return this.ping;
+        return this.getProperties().getInt("ping");
     }
 
     @Override
     public void setPing(int ping) {
-        this.ping = Math.max(ping, 0);
+        this.getProperties().set("ping", Math.max(ping, 0));
     }
 
     public Bot getBot() {
@@ -156,51 +149,29 @@ public class BotAIBase implements BotAI {
     }
 
     public void setReach(float reach) {
-        this.reach = reach;
+        this.getProperties().set("reach", reach);
     }
 
     public float getReach() {
-        return this.reach;
+        return this.getProperties().getFloat("reach");
     }
 
     private void initAI() {
-        this.reach = 3.0F;
-        this.ping = 0;
-        this.pingAmplifier = 1F;
         this.initControllers();
         this.initProperties();
     }
 
     private void initProperties() {
         this.properties = new PropertyMap(bot);
-        properties.init("reach", 3.0F, Float.class);
-        properties.init("ping", 0, Integer.class);
-        properties.init("jumpReset", false, Boolean.class);
+        properties.set("reach", 3.0F, Float.class);
+        properties.set("ping", 0, Integer.class);
+        properties.set("jumpReset", false, Boolean.class);
     }
 
     private void initControllers() {
         this.aimController = new AimController(this);
         this.hitController = new HitController(this);
         this.movementController = new MovementController(this);
-    }
-
-    public class Listener implements org.bukkit.event.Listener {
-
-        @EventHandler
-        public void onPropertySet(PropertySetEvent event) {
-            if (event.getBot() != bot) {
-                return;
-            }
-            String property = event.getProperty();
-            if (property.equals("reach")) {
-                BotAIBase.this.setReach((float) event.getValue());
-            } else if (property.equals("ping")) {
-                BotAIBase.this.setPing((int) event.getValue());
-            } else if (property.equals("pingAmplifier")) {
-                BotAIBase.this.pingAmplifier = (float) event.getValue();
-            }
-        }
-
     }
 
     public static class Direction {
