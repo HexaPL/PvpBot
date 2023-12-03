@@ -1,6 +1,8 @@
 package com.github.hexa.pvpbot.ai.controllers;
 
 import com.github.hexa.pvpbot.ai.BotAIBase;
+import com.github.hexa.pvpbot.ai.Sequence;
+import com.github.hexa.pvpbot.ai.Timers;
 
 import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.SprintResetMethod.*;
@@ -12,22 +14,59 @@ public class MovementController extends Controller {
     private ComboMethod comboMethod;
 
     private boolean canSprint;
-    private int sprintResetDelay;
-    private int sprintResetLength;
     private boolean freshSprint;
     private boolean isSprintResetting;
 
-    private int sprintTicks;
     private int lastTickCombo;
 
-    public int test = 6;
+    public static int wTapLength = 5;
+
+    public Sequence sprintReset = new Sequence(4) {
+        @Override
+        public void tick() {
+            if (finished) {
+                return;
+            }
+            switch (step) {
+                case 1:
+                    Timers.wait(this, 1);
+                    break;
+                case 2:
+                    if (MovementController.this.sprintResetMethod == WTAP) {
+                        bot.setMoveForward(0);
+                    } else if (MovementController.this.sprintResetMethod == STAP) {
+                        bot.setMoveForward(BACKWARD);
+                    }
+                    bot.setSprinting(false);
+                    MovementController.this.isSprintResetting = true;
+                    break;
+                case 3:
+                    Timers.wait(this, wTapLength);
+                    break;
+                case 4:
+                    bot.setMoveForward(FORWARD);
+                    bot.setSprinting(true);
+                    MovementController.this.setFreshSprint(true);
+                    MovementController.this.isSprintResetting = false;
+                    break;
+            }
+            super.tick();
+        }
+
+        @Override
+        public void stop() {
+            if (step != 4) {
+                this.tickStep(4); // To end sprint reset safely
+            }
+            super.stop();
+        }
+    };
 
     public MovementController(BotAIBase ai) {
         super(ai);
         this.sprintResetMethod = WTAP;
         this.comboMethod = STRAIGHTLINE;
         this.canSprint = true;
-        this.sprintTicks = -1;
         this.freshSprint = true;
         this.isSprintResetting = false;
         this.lastTickCombo = 0;
@@ -36,7 +75,8 @@ public class MovementController extends Controller {
     @Override
     public void update() {
         this.handleMovement();
-        this.handleSprintResetting();
+        //this.handleSprintResetting();
+        sprintReset.tick();
     }
 
     protected void handleMovement() {
@@ -66,73 +106,6 @@ public class MovementController extends Controller {
         this.lastTickCombo = this.ai.botCombo;
     }
 
-    protected void handleSprintResetting() {
-
-        // Check if any action is required
-        if (!this.canSprint() || this.sprintTicks == -1) {
-            return;
-        }
-
-        // Calculate sprint reset time values
-        // Hardcoded values for 'infinite' combo
-        // TODO - delay calculation based on distance and velocity
-        this.sprintResetDelay = 1;
-        if (this.ai.botCombo > 1) { // In combo
-            if (sprintResetMethod == WTAP) {
-                if (this.comboMethod == STRAIGHTLINE) {
-                    this.sprintResetLength = 9;
-                } else if (this.comboMethod == SWITCH) {
-                    this.sprintResetLength = test;
-                }
-            } else if (sprintResetMethod == STAP) {
-                this.sprintResetLength = 6;
-            }
-        } else { // In trade
-            this.sprintResetLength = 6;
-        }
-
-        // Start sprint reset if needed
-        if (bot.isSprinting() && bot.getMoveForward() > 0 && !this.freshSprint && !this.isSprintResetting && this.sprintTicks >= this.sprintResetDelay) {
-            bot.setSprinting(false);
-            this.isSprintResetting = true;
-            this.startSprintReset(this.sprintResetMethod);
-            this.sprintTicks = 0;
-        }
-
-        // End sprint reset if needed
-        if (isSprintResetting && this.sprintTicks >= sprintResetLength) {
-            bot.setSprinting(true);
-            this.freshSprint = true;
-            this.isSprintResetting = false;
-            this.endSprintReset(this.sprintResetMethod);
-            this.sprintTicks = -1;
-        }
-
-        if (this.sprintTicks != -1) this.sprintTicks++;
-
-    }
-
-    protected void startSprintReset(SprintResetMethod method) {
-
-        switch (method) {
-            case WTAP:
-                bot.setMoveForward(0);
-                break;
-            case STAP:
-                bot.setMoveForward(BACKWARD);
-                break;
-        }
-
-    }
-
-    protected void endSprintReset(SprintResetMethod method) {
-        switch (method) {
-            case WTAP:
-            case STAP:
-                bot.setMoveForward(FORWARD);
-        }
-    }
-
     public void canSprint(boolean canSprint) {
         this.canSprint = canSprint;
     }
@@ -142,6 +115,9 @@ public class MovementController extends Controller {
     }
 
     public void setFreshSprint(boolean freshSprint) {
+        if (!freshSprint) {
+            sprintReset.start();
+        }
         this.freshSprint = freshSprint;
     }
 
@@ -151,14 +127,6 @@ public class MovementController extends Controller {
 
     public boolean isSprintResetting() {
         return this.isSprintResetting;
-    }
-
-    public int getSprintTicks() {
-        return this.sprintTicks;
-    }
-
-    public void setSprintTicks(int sprintTicks) {
-        this.sprintTicks = sprintTicks;
     }
 
     public SprintResetMethod getSprintResetMethod() {

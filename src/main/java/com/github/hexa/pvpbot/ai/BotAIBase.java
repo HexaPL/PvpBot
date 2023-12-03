@@ -104,7 +104,6 @@ public class BotAIBase implements BotAI {
         // Simulate client-server desync and make bot sprint-reset soon
         if (knockback && movementController.isFreshSprint()) {
             movementController.setFreshSprint(false);
-            movementController.setSprintTicks(0);
         }
 
         // Restore sprint state to not affect later movement

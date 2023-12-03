@@ -89,8 +89,8 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         if (this.getAI().getTarget() == null) {
             ((BotAIBase)this.getAI()).selectTarget();
         }
-        Location loc = ((BotAIBase)getAI()).hitController.getPingPredictedLocation(this.getEyeLocation());
-        float reach2 = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(loc/*this.getBukkitEntity().getEyeLocation()*/, this.getAI().getTarget().getDelayedBoundingBox()), 3);
+        //Location loc = ((BotAIBase)getAI()).hitController.getPingPredictedLocation(this.getEyeLocation());
+        float reach2 = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.getBukkitEntity().getEyeLocation()/*this.getBukkitEntity().getEyeLocation()*/, this.getAI().getTarget().getDelayedBoundingBox()), 3);
         Bukkit.broadcastMessage("SERVER TICK " + owner.displayName + " " + velocity + ", reach " + reach + "(" + reach2 + ")" + ", ms " + timeS);
     }
 
