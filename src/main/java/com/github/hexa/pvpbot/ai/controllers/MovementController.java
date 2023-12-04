@@ -3,6 +3,8 @@ package com.github.hexa.pvpbot.ai.controllers;
 import com.github.hexa.pvpbot.ai.BotAIBase;
 import com.github.hexa.pvpbot.ai.Sequence;
 import com.github.hexa.pvpbot.ai.Timers;
+import com.github.hexa.pvpbot.util.MathHelper;
+import org.bukkit.Bukkit;
 
 import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.SprintResetMethod.*;
@@ -11,13 +13,13 @@ import static com.github.hexa.pvpbot.ai.controllers.MovementController.ComboMeth
 public class MovementController extends Controller {
 
     private SprintResetMethod sprintResetMethod;
-    private ComboMethod comboMethod;
+    public ComboMethod comboMethod;
+    public Sequence comboSequence;
 
     private boolean canSprint;
     private boolean freshSprint;
     private boolean isSprintResetting;
-
-    private int lastTickCombo;
+    public int ticksSinceAttack;
 
     public static int wTapLength = 5;
 
@@ -41,7 +43,7 @@ public class MovementController extends Controller {
                     MovementController.this.isSprintResetting = true;
                     break;
                 case 3:
-                    Timers.wait(this, wTapLength);
+                    Timers.wait(this, getWTapLength());
                     break;
                 case 4:
                     bot.setMoveForward(FORWARD);
@@ -62,21 +64,70 @@ public class MovementController extends Controller {
         }
     };
 
+    public Sequence switchCombo = new Sequence(1) {
+        @Override
+        public void tick() {
+            if (finished) {
+                return;
+            }
+            bot.setMoveStrafe(bot.getMoveStrafe() == RIGHT ? LEFT : RIGHT);
+            super.tick();
+        }
+
+        @Override
+        public void stop() {
+            bot.setMoveStrafe(0);
+            super.stop();
+        }
+    };
+
+    public Sequence circleCombo = new Sequence(1) {
+        private int direction;
+        @Override
+        public void start() {
+            this.direction = MathHelper.random(1, 2);
+            super.start();
+        }
+
+        @Override
+        public void tick() {
+            if (finished) {
+                return;
+            }
+            if (MathHelper.chanceOf(0.15F)) {
+                this.direction = (direction == 1 ? 2 : 1);
+            }
+            bot.setMoveStrafe(direction == 1 ? LEFT : RIGHT);
+            super.tick();
+        }
+
+        @Override
+        public void stop() {
+            bot.setMoveStrafe(0);
+            super.stop();
+        }
+    };
+
     public MovementController(BotAIBase ai) {
         super(ai);
         this.sprintResetMethod = WTAP;
-        this.comboMethod = STRAIGHTLINE;
+        this.comboMethod = CIRCLE;
+        this.comboSequence = circleCombo;
+        this.ticksSinceAttack = 0;
         this.canSprint = true;
         this.freshSprint = true;
         this.isSprintResetting = false;
-        this.lastTickCombo = 0;
     }
 
     @Override
     public void update() {
+        this.ticksSinceAttack++;
         this.handleMovement();
-        //this.handleSprintResetting();
         sprintReset.tick();
+        comboSequence.tick();
+        if (this.ticksSinceAttack > 15) {
+            comboSequence.stop();
+        }
     }
 
     protected void handleMovement() {
@@ -85,25 +136,19 @@ public class MovementController extends Controller {
             bot.setMoveForward(FORWARD);
         }
 
-        // Combo movement
-        if (this.ai.botCombo > 1) {
-            switch (comboMethod) {
-                case STRAIGHTLINE:
-                    if (bot.getMoveForward() != FORWARD && !isSprintResetting) {
-                        bot.setMoveForward(FORWARD);
-                    }
-                    break;
-                case SWITCH:
-                    if (this.lastTickCombo < this.ai.botCombo) {
-                        bot.setMoveStrafe(bot.getMoveStrafe() == RIGHT ? LEFT : RIGHT);
-                    }
-                    break;
-            }
-        } else {
-            bot.setMoveStrafe(0);
-        }
+    }
 
-        this.lastTickCombo = this.ai.botCombo;
+    private int getWTapLength() {
+        if (this.ai.botCombo <= 1) {
+            return 8;
+        } else {
+            if (this.comboMethod == STRAIGHTLINE) {
+                return wTapLength;
+            } else if (this.comboMethod == SWITCH) {
+                return 4;
+            }
+        }
+        return wTapLength;
     }
 
     public void canSprint(boolean canSprint) {
@@ -115,10 +160,20 @@ public class MovementController extends Controller {
     }
 
     public void setFreshSprint(boolean freshSprint) {
-        if (!freshSprint) {
-            sprintReset.start();
-        }
         this.freshSprint = freshSprint;
+    }
+
+    public void registerAttack() {
+        this.ticksSinceAttack = 0;
+        setFreshSprint(false);
+        sprintReset.start();
+        if (ai.botCombo > 1) {
+            comboSequence.start();
+        }
+    }
+
+    public void registerDamage() {
+        comboSequence.stop();
     }
 
     public boolean isFreshSprint() {

@@ -57,7 +57,11 @@ public class HitController extends Controller {
             Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), this::doAttack, MathHelper.floor((bot.getAI().getPing() / 2F) / 50F));
         }
         if (PvpBotPlugin.debug) {
-            Bukkit.broadcastMessage("REACH - true: " + MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.bot.getEyeLocation(), BoundingBoxUtils.bukkitToLegacy(bot.getAI().getTarget().getPlayer().getBoundingBox())), 4) + ", delayed: " + MathHelper.roundTo((float) pingDistance, 4) + ", pingReach: " + MathHelper.roundTo(getPingReach(), 4));
+            double pingToPing = getPingDistance();
+            double trueToPing = BoundingBoxUtils.distanceTo(bot.getEyeLocation(), ai.getTarget().getDelayedBoundingBox());
+            Vector v = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
+            double pingToTrue = BoundingBoxUtils.distanceTo(v.toLocation(bot.getEyeLocation().getWorld()), BoundingBoxUtils.bukkitToLegacy(bot.getAI().getTarget().getPlayer().getBoundingBox()));
+            Bukkit.broadcastMessage("REACH - true: " + MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.bot.getEyeLocation(), BoundingBoxUtils.bukkitToLegacy(bot.getAI().getTarget().getPlayer().getBoundingBox())), 4) + ", ping-to-ping: " + MathHelper.roundTo((float) getPingDistance(), 4) + ", true-to-ping: " + MathHelper.roundTo((float) trueToPing, 4) + ", ping-to-true: " + MathHelper.roundTo((float) pingToTrue, 4) + ", boxes: " + BoundingBoxUtils.distanceTo(bot.getAI().getTarget().getPlayer().getEyeLocation(), ai.getTarget().getDelayedBoundingBox()));
         }
         return true;
 
@@ -68,12 +72,15 @@ public class HitController extends Controller {
         bot.swingArm();
     }
 
+    public double getPingDistance() {
+        Vector pingLocation = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
+        return BoundingBoxUtils.distanceTo(pingLocation.toLocation(bot.getEyeLocation().getWorld()), ai.getTarget().getDelayedBoundingBox());
+    }
+
     public float getPingReach() {
         Location eyeLocation = bot.getEyeLocation();
-        Vector pingLocation = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion()).multiply((bot.getAI().getPing() / 2F) / 50F));
-        pingDistance = BoundingBoxUtils.distanceTo(pingLocation.toLocation(bot.getEyeLocation().getWorld()), ai.getTarget().getDelayedBoundingBox());
         double distanceNormal = BoundingBoxUtils.distanceTo(eyeLocation, ai.getTarget().getDelayedBoundingBox());
-        return (float) (ai.getReach() + (distanceNormal - pingDistance));
+        return (float) (ai.getReach() + (distanceNormal - getPingDistance()));
     }
 
 }

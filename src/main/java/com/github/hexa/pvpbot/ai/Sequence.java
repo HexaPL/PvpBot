@@ -10,6 +10,7 @@ public abstract class Sequence {
 
     public Sequence(int totalSteps) {
         this.totalSteps = totalSteps;
+        this.finished = true;
     }
 
     public void start() {

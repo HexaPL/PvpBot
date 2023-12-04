@@ -35,4 +35,14 @@ public class MathHelper {
         return (float) (Math.round(var * decimal) / decimal);
     }
 
+    public static boolean chanceOf(float percent) {
+        percent = clamp(percent, 0F, 1F);
+        if (percent == 0F) return false;
+        if (percent == 1F) return true;
+        if (random(1, 100) <= percent * 100F) {
+            return true;
+        }
+        return false;
+    }
+
 }

@@ -1,16 +1,12 @@
 package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.Bot;
-import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.controllers.AimController;
 import com.github.hexa.pvpbot.ai.controllers.HitController;
 import com.github.hexa.pvpbot.ai.controllers.MovementController;
-import com.github.hexa.pvpbot.events.PropertySetEvent;
-import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.PropertyMap;
 import net.minecraft.server.v1_16_R3.DamageSource;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.util.Vector;
 
 public class BotAIBase implements BotAI {
@@ -50,6 +46,7 @@ public class BotAIBase implements BotAI {
     public void damageEntity(DamageSource damageSource) {
         this.botCombo = 0;
         this.opponentCombo++; // TODO - detect opponent from damageSource
+        movementController.registerDamage();
     }
 
     @Override
@@ -101,9 +98,9 @@ public class BotAIBase implements BotAI {
         // Attack entity
         bot.attack(player);
 
-        // Simulate client-server desync and make bot sprint-reset soon
+        // Simulate client-server de-sync and make bot sprint-reset soon
         if (knockback && movementController.isFreshSprint()) {
-            movementController.setFreshSprint(false);
+            movementController.registerAttack();
         }
 
         // Restore sprint state to not affect later movement
