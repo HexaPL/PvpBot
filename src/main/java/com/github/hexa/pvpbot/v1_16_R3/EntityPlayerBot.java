@@ -179,6 +179,13 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     }
 
     @Override
+    public void jump() {
+        if (this.onGround) {
+            super.jump();
+        }
+    }
+
+    @Override
     public Location getEyeLocation() {
         return this.getBukkitEntity().getEyeLocation();
     }

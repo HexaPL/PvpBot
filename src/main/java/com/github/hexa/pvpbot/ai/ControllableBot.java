@@ -18,6 +18,8 @@ public interface ControllableBot extends Bot {
 
     public void attack(LivingEntity entity);
 
+    public void jump();
+
     public Location getEyeLocation();
 
     public BoundingBox getBukkitBoundingBox();

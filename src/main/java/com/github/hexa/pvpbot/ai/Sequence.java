@@ -52,6 +52,14 @@ public abstract class Sequence {
         this.step = backup;
     }
 
+    public boolean hasTimer() {
+        return Timers.getTimers().containsKey(this);
+    }
+
+    public Timer getTimer() {
+        return Timers.getTimers().get(this);
+    }
+
     public void stop() {
         this.finished = true;
     }

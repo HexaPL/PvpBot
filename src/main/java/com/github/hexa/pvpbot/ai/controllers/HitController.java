@@ -11,6 +11,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
+import static com.github.hexa.pvpbot.ai.controllers.MovementController.ComboMethod.UPPERCUT;
+
 public class HitController extends Controller {
 
     private double pingDistance;
@@ -32,7 +34,8 @@ public class HitController extends Controller {
         // Simple hit system for now
 
         // Check attack cooldown
-        if (this.bot.getAttackCooldown() < hitSpeed) {
+        float currentHitSpeed = getCurrentHitSpeed();
+        if (this.bot.getAttackCooldown() < currentHitSpeed) {
             return false;
         }
 
@@ -65,6 +68,15 @@ public class HitController extends Controller {
         }
         return true;
 
+    }
+
+    public float getCurrentHitSpeed() {
+        switch (ai.movementController.comboMethod) {
+            case UPPERCUT:
+                return 0.92F;
+            default:
+                return hitSpeed;
+        }
     }
 
     private void doAttack() {
