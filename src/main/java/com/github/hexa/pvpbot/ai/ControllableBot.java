@@ -18,6 +18,8 @@ public interface ControllableBot extends Bot {
 
     public void attack(LivingEntity entity);
 
+    public boolean canJump();
+
     public void jump();
 
     public Location getEyeLocation();
@@ -33,6 +35,12 @@ public interface ControllableBot extends Bot {
     public float getMoveStrafe();
 
     public boolean isSprinting();
+
+    public boolean isOnGround();
+
+    public boolean canCrit();
+
+    public void setFallDistance(float f);
 
     public void setMot(double x, double y, double z);
 

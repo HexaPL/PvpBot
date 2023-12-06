@@ -32,6 +32,8 @@ public class Timers {
     public static void waitUntil(Sequence sequence, Condition condition) {
         sequence.isOnTimer = true;
         if (condition.isTrue()) {
+            sequence.step++;
+            sequence.tick();
             sequence.isOnTimer = false;
         }
     }

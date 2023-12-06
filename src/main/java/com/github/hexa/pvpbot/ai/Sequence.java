@@ -27,7 +27,7 @@ public abstract class Sequence {
         if (this.finished) {
             return;
         }
-        if (this.step == this.totalSteps) {
+        if (this.step >= this.totalSteps) {
             this.finished = true;
             return;
         }

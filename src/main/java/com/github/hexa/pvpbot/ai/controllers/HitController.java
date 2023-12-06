@@ -7,19 +7,21 @@ import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.VectorUtils;
 import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import com.github.hexa.pvpbot.util.org.bukkit.util.RayTraceResult;
+import com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
+import static com.github.hexa.pvpbot.ai.controllers.HitController.HitType.*;
+
 public class HitController extends Controller {
 
-    private double pingDistance;
-
     public static float hitSpeed = 0.9F;
+    public HitType hitType;
 
     public HitController(BotAIBase ai) {
         super(ai);
-        pingDistance = 0;
+        this.hitType = SPRINT_HIT;
     }
 
     @Override
@@ -52,17 +54,22 @@ public class HitController extends Controller {
         if (result == null) {
             return false;
         }
-        if (bot.getAI().getPing() == 0) {
-            doAttack();
-        } else {
+
+        doAttack(hitType);
+        /* if (bot.getAI().getPing() == 0) {
+
+        } else { // TODO - ping delayed hits
             Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), this::doAttack, MathHelper.floor((bot.getAI().getPing() / 2F) / 50F));
-        }
+        }*/
         if (PvpBotPlugin.debug) {
+            /*
             double pingToPing = getPingDistance();
             double trueToPing = BoundingBoxUtils.distanceTo(bot.getEyeLocation(), ai.getTarget().getDelayedBoundingBox());
             Vector v = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
             double pingToTrue = BoundingBoxUtils.distanceTo(v.toLocation(bot.getEyeLocation().getWorld()), BoundingBoxUtils.bukkitToLegacy(bot.getAI().getTarget().getPlayer().getBoundingBox()));
             Bukkit.broadcastMessage("REACH - true: " + MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.bot.getEyeLocation(), BoundingBoxUtils.bukkitToLegacy(bot.getAI().getTarget().getPlayer().getBoundingBox())), 4) + ", ping-to-ping: " + MathHelper.roundTo((float) getPingDistance(), 4) + ", true-to-ping: " + MathHelper.roundTo((float) trueToPing, 4) + ", ping-to-true: " + MathHelper.roundTo((float) pingToTrue, 4) + ", boxes: " + BoundingBoxUtils.distanceTo(bot.getAI().getTarget().getPlayer().getEyeLocation(), ai.getTarget().getDelayedBoundingBox()));
+
+             */
         }
         return true;
 
@@ -72,13 +79,26 @@ public class HitController extends Controller {
         switch (ai.movementController.comboMethod) {
             case UPPERCUT:
                 return 0.92F;
+            case CRIT_SPAM:
+                return hitSpeed;
             default:
                 return hitSpeed;
         }
     }
 
-    private void doAttack() {
-        ai.attack(ai.getTarget().getPlayer());
+    private void doAttack(HitType hitType) {
+        if (hitType == SPRINT_HIT) {
+            ai.attack(ai.getTarget().getPlayer());
+        } else if (hitType == CRITICAL_HIT) { // TODO - realistic crits (with w-release delays)
+            if (!bot.canCrit() && !bot.isOnGround() && bot.getMotion().getY() >= 0) {
+                return; // Wait for the falling phase of jump
+            }
+            bot.setSprinting(false);
+            bot.setFallDistance(1.0F); // For some reason, bot always has 0 fall distance - so crits don't work without this trick
+            ai.attack(ai.getTarget().getPlayer());
+            bot.setFallDistance(0F);
+            bot.setSprinting(true);
+        }
         bot.swingArm();
     }
 

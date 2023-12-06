@@ -4,6 +4,7 @@ import com.github.hexa.pvpbot.ai.*;
 import com.github.hexa.pvpbot.util.MathHelper;
 
 import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
+import static com.github.hexa.pvpbot.ai.controllers.HitController.HitType.*;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.SprintResetMethod.*;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.ComboMethod.*;
 
@@ -24,7 +25,7 @@ public class MovementController extends Controller {
     public MovementController(BotAIBase ai) {
         super(ai);
         this.sprintResetMethod = WTAP;
-        this.setComboMethod(UPPERCUT);
+        this.setComboMethod(CRIT_SPAM);
         this.ticksSinceAttack = 0;
         this.ticksSinceDamage = 0;
         this.canSprint = true;
@@ -230,12 +231,46 @@ public class MovementController extends Controller {
             if (finished) return;
             switch (step) {
                 case 1:
-                    Timers.waitUntil(this, () -> sprintReset.step == 4);
+                    Timers.waitUntil(this, () -> sprintReset.finished);
                     break;
                 case 2:
                     bot.jump();
+                    break;
             }
             super.tick();
+        }
+    };
+
+    public Sequence critSpam = new Sequence(4) {
+        private int ticks;
+        @Override
+        public void tick() {
+            if (finished) return;
+            switch (step) {
+                case 1:
+                    Timers.waitUntil(this, () -> bot.canJump());
+                    break;
+                case 2:
+                    bot.jump();
+                    ai.hitController.hitType = CRITICAL_HIT;
+                    this.ticks = ticksSinceAttack;
+                    break;
+                case 3:
+                    Timers.waitUntil(this, () -> (ticksSinceAttack - this.ticks) > 15);
+                    break;
+                case 4:
+                    ai.hitController.hitType = SPRINT_HIT;
+                    break;
+            }
+            super.tick();
+        }
+
+        @Override
+        public void stop() {
+            if (ticksSinceDamage == 0) {
+                ai.hitController.hitType = SPRINT_HIT;
+            }
+            super.stop();
         }
     };
 
@@ -334,6 +369,9 @@ public class MovementController extends Controller {
                 return;
             case UPPERCUT:
                 this.comboSequence = uppercutCombo;
+                return;
+            case CRIT_SPAM:
+                this.comboSequence = critSpam;
                 return;
         }
     }

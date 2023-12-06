@@ -179,10 +179,25 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     }
 
     @Override
+    public boolean canJump() {
+        return this.onGround;
+    }
+
+    @Override
     public void jump() {
-        if (this.onGround) {
+        if (this.canJump()) {
             super.jump();
         }
+    }
+
+    @Override
+    public boolean canCrit() {
+        return !this.isSprinting() && !this.onGround && this.getMotion().getY() < 0;
+    }
+
+    @Override
+    public void setFallDistance(float f) {
+        this.fallDistance = f;
     }
 
     @Override

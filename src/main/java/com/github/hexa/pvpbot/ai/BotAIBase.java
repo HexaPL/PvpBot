@@ -5,6 +5,7 @@ import com.github.hexa.pvpbot.ai.controllers.AimController;
 import com.github.hexa.pvpbot.ai.controllers.HitController;
 import com.github.hexa.pvpbot.ai.controllers.MovementController;
 import com.github.hexa.pvpbot.util.PropertyMap;
+import com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot;
 import net.minecraft.server.v1_16_R3.DamageSource;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
