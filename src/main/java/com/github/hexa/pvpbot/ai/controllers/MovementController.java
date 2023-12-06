@@ -2,9 +2,6 @@ package com.github.hexa.pvpbot.ai.controllers;
 
 import com.github.hexa.pvpbot.ai.*;
 import com.github.hexa.pvpbot.util.MathHelper;
-import org.bukkit.Bukkit;
-
-import java.sql.Time;
 
 import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
 import static com.github.hexa.pvpbot.ai.controllers.MovementController.SprintResetMethod.*;
@@ -27,7 +24,7 @@ public class MovementController extends Controller {
     public MovementController(BotAIBase ai) {
         super(ai);
         this.sprintResetMethod = WTAP;
-        this.setComboMethod(CIRCLE);
+        this.setComboMethod(UPPERCUT);
         this.ticksSinceAttack = 0;
         this.ticksSinceDamage = 0;
         this.canSprint = true;
@@ -42,9 +39,6 @@ public class MovementController extends Controller {
             sprintReset.tick();
         }
         comboSequence.tick();
-        if (this.ticksSinceAttack > 15) {
-            //comboSequence.stop();
-        }
         this.ticksSinceAttack++;
         this.ticksSinceDamage++;
     }
@@ -98,13 +92,23 @@ public class MovementController extends Controller {
         }
     };
 
+    public Sequence straightlineCombo = SequenceBuilder.emptySequence();
+
     public Sequence switchCombo = new Sequence(3) {
+        private int previousDirection = RIGHT;
+        @Override
+        public void start() {
+            super.start();
+        }
+
         @Override
         public void tick() {
             if (finished) return;
             switch (step) {
                 case 1:
-                    bot.setMoveStrafe(bot.getMoveStrafe() == RIGHT ? LEFT : RIGHT);
+                    int newDirection = previousDirection == RIGHT ? LEFT : RIGHT;
+                    bot.setMoveStrafe(newDirection);
+                    previousDirection = newDirection;
                     break;
                 case 2:
                     Timers.waitUntil(this, () -> ticksSinceAttack > 15);
@@ -113,7 +117,6 @@ public class MovementController extends Controller {
                     bot.setMoveStrafe(0);
                     break;
             }
-
             super.tick();
         }
 
@@ -166,13 +169,11 @@ public class MovementController extends Controller {
         }
     };
 
-    public Sequence uppercutCombo = Sequences.createSimpleSequence(1, () -> {
+    public Sequence uppercutCombo = SequenceBuilder.create().onTick(1, () -> {
         bot.jump();
-    });
+    }).save();
 
-    public Sequence straightlineCombo = Sequences.empty();
-
-    public Sequence wasdCombo = new Sequence(8) {
+    public final Sequence wasdCombo = new Sequence(8) {
         @Override
         public void tick() {
             if (finished) return;
@@ -342,7 +343,7 @@ public class MovementController extends Controller {
     }
 
     public enum ComboMethod {
-        STRAIGHTLINE, CIRCLE, SWITCH, WASD, UPPERCUT
+        STRAIGHTLINE, CIRCLE, SWITCH, WASD, UPPERCUT, CRIT_SPAM
     }
 
 }

@@ -11,8 +11,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
-import static com.github.hexa.pvpbot.ai.controllers.MovementController.ComboMethod.UPPERCUT;
-
 public class HitController extends Controller {
 
     private double pingDistance;
@@ -93,6 +91,10 @@ public class HitController extends Controller {
         Location eyeLocation = bot.getEyeLocation();
         double distanceNormal = BoundingBoxUtils.distanceTo(eyeLocation, ai.getTarget().getDelayedBoundingBox());
         return (float) (ai.getReach() + (distanceNormal - getPingDistance()));
+    }
+
+    public enum HitType {
+        SPRINT_HIT, CRITICAL_HIT
     }
 
 }
