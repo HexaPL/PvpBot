@@ -8,4 +8,8 @@ public interface Condition {
         return check();
     }
 
+    default public boolean isFalse() {
+        return !isTrue();
+    }
+
 }

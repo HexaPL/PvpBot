@@ -48,6 +48,10 @@ public class Target {
         }
     }
 
+    public boolean isInvulnerable() {
+        return player.getNoDamageTicks() > player.getMaximumNoDamageTicks() / 2;
+    }
+
     private BoundingBox calculateDelayedBoundingBox() {
 
         if (this.delay == 0) {

@@ -57,7 +57,7 @@ public class BotAIBase implements BotAI {
 
     protected void updateControllers() {
         aimController.update();
-        bot.setSprinting(movementController.canSprint() && !movementController.isSprintResetting());
+        //bot.setSprinting(movementController.canSprint() && !movementController.isSprintResetting() && !hitController.isCritting);
         hitController.update();
         movementController.update();
     }
@@ -90,8 +90,10 @@ public class BotAIBase implements BotAI {
         }
 
         // Update sprint state if needed
-        if (knockback && bot.isSprinting() && !movementController.isFreshSprint()) {
-            bot.setSprinting(false);
+        if (knockback && bot.isSprinting()) {
+            if (!movementController.isFreshSprint()) {
+                bot.setSprinting(false);
+            }
             Vector mot = bot.getMotion();
             bot.setMot(mot.getX() * 0.6, mot.getY(), mot.getZ() * 0.6);
         }
@@ -99,13 +101,13 @@ public class BotAIBase implements BotAI {
         // Attack entity
         bot.attack(player);
 
-        // Simulate client-server de-sync and make bot sprint-reset soon
-        if (knockback && movementController.isFreshSprint()) {
-            movementController.registerAttack();
-        }
-
         // Restore sprint state to not affect later movement
         bot.setSprinting(wasSprinting);
+
+        // Simulate client-server de-sync and make bot sprint-reset soon
+        if (knockback) {
+            movementController.registerAttack();
+        }
 
     }
 

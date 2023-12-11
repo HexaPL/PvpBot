@@ -2,6 +2,7 @@ package com.github.hexa.pvpbot.ai.controllers;
 
 import com.github.hexa.pvpbot.ai.*;
 import com.github.hexa.pvpbot.util.MathHelper;
+import org.bukkit.Bukkit;
 
 import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
 import static com.github.hexa.pvpbot.ai.controllers.HitController.HitType.*;
@@ -46,65 +47,55 @@ public class MovementController extends Controller {
 
     protected void handleMovement() {
 
-        if (bot.getMoveForward() != FORWARD && !isSprintResetting) {
-            bot.setMoveForward(FORWARD);
+        if (bot.getMoveForward() != FORWARD && !isSprintResetting && !ai.hitController.isCritting) {
+            //bot.setMoveForward(FORWARD); // TODO - update moveForward in sequences
         }
 
     }
 
     public Sequence sprintReset = new Sequence(4) {
         @Override
-        public void tick() {
-            if (finished) {
-                return;
-            }
+        public void onTick() {
             switch (step) {
                 case 1:
-                    Timers.wait(this, 1);
+                    this.wait(1);
                     break;
                 case 2:
-                    if (MovementController.this.sprintResetMethod == WTAP) {
+                    if (sprintResetMethod == WTAP) {
                         bot.setMoveForward(0);
-                    } else if (MovementController.this.sprintResetMethod == STAP) {
+                    } else if (sprintResetMethod == STAP) {
                         bot.setMoveForward(BACKWARD);
                     }
                     bot.setSprinting(false);
-                    MovementController.this.isSprintResetting = true;
+                    isSprintResetting = true;
                     break;
                 case 3:
-                    Timers.wait(this, getWTapLength());
+                    this.wait(getWTapLength());
                     break;
                 case 4:
                     bot.setMoveForward(FORWARD);
                     bot.setSprinting(true);
-                    MovementController.this.setFreshSprint(true);
-                    MovementController.this.isSprintResetting = false;
+                    setFreshSprint(true);
+                    isSprintResetting = false;
                     break;
             }
-            super.tick();
         }
 
         @Override
-        public void stop() {
-            if (!finished && !MovementController.this.isFreshSprint()) {
+        public void onStop() {
+            if (!finished && !isFreshSprint()) {
                 this.tickStep(4); // To end sprint reset safely
             }
-            super.stop();
         }
     };
 
-    public Sequence straightlineCombo = SequenceBuilder.emptySequence();
+    public Sequence straightlineCombo = Sequence.empty();
 
     public Sequence switchCombo = new Sequence(3) {
         private int previousDirection = RIGHT;
-        @Override
-        public void start() {
-            super.start();
-        }
 
         @Override
-        public void tick() {
-            if (finished) return;
+        public void onTick() {
             switch (step) {
                 case 1:
                     int newDirection = previousDirection == RIGHT ? LEFT : RIGHT;
@@ -112,19 +103,17 @@ public class MovementController extends Controller {
                     previousDirection = newDirection;
                     break;
                 case 2:
-                    Timers.waitUntil(this, () -> ticksSinceAttack > 15);
+                    this.waitUntil(() -> ticksSinceAttack > 15);
                     break;
                 case 3:
                     bot.setMoveStrafe(0);
                     break;
             }
-            super.tick();
         }
 
         @Override
-        public void stop() {
+        public void onStop() {
             bot.setMoveStrafe(0);
-            super.stop();
         }
     };
 
@@ -132,17 +121,15 @@ public class MovementController extends Controller {
         private int direction = MathHelper.random(1, 2);
         private boolean interrupted = false;
         @Override
-        public void start() {
+        public void onStart() {
             if (this.interrupted) {
                 this.interrupted = false;
                 this.direction = MathHelper.random(1, 2);
             }
-            super.start();
         }
 
         @Override
-        public void tick() {
-            if (finished) return;
+        public void onTick() {
             switch (step) {
                 case 1:
                     if (MathHelper.chanceOf(0.15F)) {
@@ -151,22 +138,20 @@ public class MovementController extends Controller {
                     bot.setMoveStrafe(direction == 1 ? LEFT : RIGHT);
                     break;
                 case 2:
-                    Timers.waitUntil(this, () -> ticksSinceAttack > 15);
+                    this.waitUntil(() -> ticksSinceAttack > 15);
                     break;
                 case 3:
                     bot.setMoveStrafe(0);
                     break;
             }
-            super.tick();
         }
 
         @Override
-        public void stop() {
+        public void onStop() {
             if (ticksSinceDamage == 0) {
                 this.interrupted = true;
             }
             bot.setMoveStrafe(0);
-            super.stop();
         }
     };
 
@@ -176,101 +161,79 @@ public class MovementController extends Controller {
 
     public final Sequence wasdCombo = new Sequence(8) {
         @Override
-        public void tick() {
-            if (finished) return;
+        public void onTick() {
             switch (step) {
                 case 1:
-                    Timers.wait(this, 1);
+                    this.wait(1);
                     break;
                 case 2:
                     bot.setMoveForward(0);
                     bot.setMoveStrafe(LEFT);
                     bot.setSprinting(false);
-                    MovementController.this.isSprintResetting = true;
+                    isSprintResetting = true;
                     break;
                 case 3:
-                    Timers.wait(this, 1);
+                    this.wait(1);
                     break;
                 case 4: // 4
                     bot.setMoveForward(BACKWARD);
                     bot.setMoveStrafe(0);
                     break;
                 case 5:
-                    Timers.wait(this, 1);
+                    this.wait(1);
                     break;
                 case 6:
                     bot.setMoveForward(0);
                     bot.setMoveStrafe(RIGHT);
                     break;
                 case 7:
-                    Timers.wait(this, 1);
+                    this.wait(1);
                     break;
                 case 8:
                     bot.setMoveForward(FORWARD);
                     bot.setMoveStrafe(0);
-                    MovementController.this.setFreshSprint(true);
-                    MovementController.this.isSprintResetting = false;
+                    setFreshSprint(true);
+                    isSprintResetting = false;
                     break;
             }
-            super.tick();
         }
 
         @Override
-        public void stop() {
+        public void onStop() {
             if (!finished && !MovementController.this.isFreshSprint()) {
                 this.tickStep(8); // To end sprint reset safely
             }
-            super.stop();
         }
     };
 
     // TODO - working sprintcut
     public Sequence sprintcutCombo = new Sequence(2) {
         @Override
-        public void tick() {
-            if (finished) return;
+        public void onTick() {
             switch (step) {
                 case 1:
-                    Timers.waitUntil(this, () -> sprintReset.finished);
+                    this.waitUntil(() -> sprintReset.finished);
                     break;
                 case 2:
                     bot.jump();
                     break;
             }
-            super.tick();
         }
     };
 
-    public Sequence critSpam = new Sequence(4) {
-        private int ticks;
+    public Sequence critSpam = Sequence.empty(); // Critspam in HitController
+
+    public Sequence jumpSequence = new Sequence(2) {
         @Override
-        public void tick() {
-            if (finished) return;
+        public void onTick() {
             switch (step) {
                 case 1:
-                    Timers.waitUntil(this, () -> bot.canJump());
+                    this.waitUntil(() -> bot.canJump());
                     break;
                 case 2:
                     bot.jump();
-                    ai.hitController.hitType = CRITICAL_HIT;
-                    this.ticks = ticksSinceAttack;
-                    break;
-                case 3:
-                    Timers.waitUntil(this, () -> (ticksSinceAttack - this.ticks) > 15);
-                    break;
-                case 4:
-                    ai.hitController.hitType = SPRINT_HIT;
                     break;
             }
-            super.tick();
-        }
-
-        @Override
-        public void stop() {
-            if (ticksSinceDamage == 0) {
-                ai.hitController.hitType = SPRINT_HIT;
-            }
-            super.stop();
         }
     };
 
@@ -285,6 +248,8 @@ public class MovementController extends Controller {
                     return 4;
                 case UPPERCUT:
                     return 6;
+                case CRIT_SPAM:
+                    return 5;
                 default:
                     return wTapLength;
             }
@@ -311,8 +276,10 @@ public class MovementController extends Controller {
     public void registerAttack() {
         this.ticksSinceAttack = 0;
         //this.randomizeCombo();
-        setFreshSprint(false);
-        if (this.comboMethod != WASD) {
+        if (bot.isSprinting()) {
+            setFreshSprint(false);
+        }
+        if (bot.isSprinting() && this.comboMethod != WASD) {
             sprintReset.start();
         }
         if (ai.botCombo > 1 || this.comboMethod == WASD) {

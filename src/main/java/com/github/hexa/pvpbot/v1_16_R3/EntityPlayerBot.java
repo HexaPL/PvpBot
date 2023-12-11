@@ -22,6 +22,8 @@ import org.bukkit.util.Vector;
 
 import java.net.URL;
 
+import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.FORWARD;
+
 public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
     public String name;
@@ -192,7 +194,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
     @Override
     public boolean canCrit() {
-        return !this.isSprinting() && !this.onGround && this.getMotion().getY() < 0;
+        return /*!this.isSprinting() && */!this.onGround && this.getMotion().getY() < 0;
     }
 
     @Override
@@ -213,6 +215,8 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     @Override
     public void setMoveForward(float forward) {
         this.forward = forward;
+        // Toggle sprint
+        this.setSprinting(forward == 1.0F);
     }
 
     @Override

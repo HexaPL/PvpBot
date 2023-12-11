@@ -38,20 +38,20 @@ public class SequenceBuilder {
         return new Sequence(this.totalSteps) {
             @Override
             public void start() {
-                start.steps();
+                start.execute();
                 super.start();
             }
 
             @Override
             public void tick() {
                 if (finished) return;
-                tick.steps();
+                tick.execute();
                 super.tick();
             }
 
             @Override
             public void stop() {
-                stop.steps();
+                stop.execute();
                 super.stop();
             }
         };

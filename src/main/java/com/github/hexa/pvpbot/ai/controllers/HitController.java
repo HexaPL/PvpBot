@@ -1,43 +1,137 @@
 package com.github.hexa.pvpbot.ai.controllers;
 
-import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.BotAIBase;
+import com.github.hexa.pvpbot.ai.Sequence;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
-import com.github.hexa.pvpbot.util.MathHelper;
-import com.github.hexa.pvpbot.util.VectorUtils;
 import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import com.github.hexa.pvpbot.util.org.bukkit.util.RayTraceResult;
-import com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
+import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.*;
 import static com.github.hexa.pvpbot.ai.controllers.HitController.HitType.*;
+import static com.github.hexa.pvpbot.ai.controllers.MovementController.ComboMethod.*;
 
 public class HitController extends Controller {
 
     public static float hitSpeed = 0.9F;
     public HitType hitType;
+    public Sequence hitSequence;
+    public boolean isCritting;
 
     public HitController(BotAIBase ai) {
         super(ai);
+        this.setHitSequence(sprintHitSequence);
         this.hitType = SPRINT_HIT;
+        this.isCritting = false;
     }
 
     @Override
     public void update() {
-        this.handleHitting();
+        // TODO - jumpcrits based on velocity
+        /*if ((ai.movementController.ticksSinceAttack > 16 || ai.botCombo == 0) && this.getPingDistance() > 4 && (this.hitSequence != jumpAndCritSequence || this.hitSequence.finished)) {
+            this.setHitSequence(jumpAndCritSequence);
+            this.hitSequence.start();
+        }*/
+        if (ai.movementController.comboMethod == CRIT_SPAM && ai.botCombo >= 2 && this.hitSequence.finished) {
+            this.setHitSequence(jumpAndCritSequence);
+            this.hitSequence.start();
+        } else if (this.hitSequence.finished) {
+            this.setHitSequence(sprintHitSequence);
+            this.hitSequence.start();
+        }
+        this.hitSequence.tick();
     }
 
-    private boolean handleHitting() {
-
-        // Simple hit system for now
-
-        // Check attack cooldown
-        float currentHitSpeed = getCurrentHitSpeed();
-        if (this.bot.getAttackCooldown() < currentHitSpeed) {
-            return false;
+    public Sequence sprintHitSequence = new Sequence(2) {
+        @Override
+        public void onStart() {
+            if (!ai.movementController.isSprintResetting()) {
+                bot.setMoveForward(FORWARD);
+            }
         }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    this.waitUntil(() -> canAttack());
+                    break;
+                case 2:
+                    doAttack(SPRINT_HIT);
+                    break;
+            }
+        }
+    };
+
+    public Sequence jumpAndCritSequence = new Sequence(5) {
+        @Override
+        public void onStart() {
+            if (!ai.movementController.isSprintResetting()) {
+                bot.setMoveForward(FORWARD);
+            }
+        }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    this.waitUntil(() -> !ai.movementController.isSprintResetting());
+                    break;
+                case 2:
+                    this.tickSubsequence(ai.movementController.jumpSequence);
+                    break;
+                case 3:
+                    this.wait(7);
+                    break;
+                case 4:
+                    if (bot.isOnGround()) { // Stop the sequence if bot landed before it could hit the player
+                        this.stop();
+                        break;
+                    }
+                    this.nextStep();
+                    break;
+                case 5:
+                    this.tickSubsequence(critSequence);
+                    break;
+            }
+        }
+
+        @Override
+        public void onStop() {
+            this.stopSubsequence();
+        }
+    };
+
+    public Sequence critSequence = new Sequence(3) {
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    isCritting = true;
+                    bot.setMoveForward(0);
+                    break;
+                case 2:
+                    this.wait(2);
+                    break;
+                case 3:
+                    boolean canHit = canHit();
+                    if (canHit) {
+                        doAttack(CRITICAL_HIT);
+                    }
+                    isCritting = false;
+                    break;
+            }
+        }
+
+        @Override
+        public void onStop() {
+            isCritting = false;
+        }
+    };
+
+    public boolean canHit() {
 
         // Calculate distance to target
         Location eyeLocation = bot.getEyeLocation();
@@ -50,29 +144,32 @@ public class HitController extends Controller {
         }
 
         // Perform raytrace to target's hitbox
-        RayTraceResult result = targetBoundingBox.rayTrace(eyeLocation.toVector(), eyeLocation.getDirection(), getPingReach());
-        if (result == null) {
+        RayTraceResult result = targetBoundingBox.rayTrace(eyeLocation.toVector(), eyeLocation.getDirection(), ai.getReach() + 3);
+        return result != null && distance <= this.getPingReach();
+    }
+
+    public boolean canAttack() {
+
+        // Check attack cooldown
+        float currentHitSpeed = getCurrentHitSpeed();
+        if (this.bot.getAttackCooldown() < currentHitSpeed) {
             return false;
         }
 
-        doAttack(hitType);
-        /* if (bot.getAI().getPing() == 0) {
+        // Check target's no damage ticks
 
-        } else { // TODO - ping delayed hits
-            Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), this::doAttack, MathHelper.floor((bot.getAI().getPing() / 2F) / 50F));
-        }*/
-        if (PvpBotPlugin.debug) {
-            /*
-            double pingToPing = getPingDistance();
-            double trueToPing = BoundingBoxUtils.distanceTo(bot.getEyeLocation(), ai.getTarget().getDelayedBoundingBox());
-            Vector v = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
-            double pingToTrue = BoundingBoxUtils.distanceTo(v.toLocation(bot.getEyeLocation().getWorld()), BoundingBoxUtils.bukkitToLegacy(bot.getAI().getTarget().getPlayer().getBoundingBox()));
-            Bukkit.broadcastMessage("REACH - true: " + MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.bot.getEyeLocation(), BoundingBoxUtils.bukkitToLegacy(bot.getAI().getTarget().getPlayer().getBoundingBox())), 4) + ", ping-to-ping: " + MathHelper.roundTo((float) getPingDistance(), 4) + ", true-to-ping: " + MathHelper.roundTo((float) trueToPing, 4) + ", ping-to-true: " + MathHelper.roundTo((float) pingToTrue, 4) + ", boxes: " + BoundingBoxUtils.distanceTo(bot.getAI().getTarget().getPlayer().getEyeLocation(), ai.getTarget().getDelayedBoundingBox()));
+        return canHit();
+    }
 
-             */
+    public boolean canCrit() {
+        return bot.canCrit();
+    }
+
+    public void setHitSequence(Sequence hitSequence) {
+        if (this.hitSequence != null && !this.hitSequence.finished) {
+            this.hitSequence.stop();
         }
-        return true;
-
+        this.hitSequence = hitSequence;
     }
 
     public float getCurrentHitSpeed() {
@@ -87,23 +184,23 @@ public class HitController extends Controller {
     }
 
     private void doAttack(HitType hitType) {
-        if (hitType == SPRINT_HIT) {
-            ai.attack(ai.getTarget().getPlayer());
-        } else if (hitType == CRITICAL_HIT) { // TODO - realistic crits (with w-release delays)
-            if (!bot.canCrit() && !bot.isOnGround() && bot.getMotion().getY() >= 0) {
-                return; // Wait for the falling phase of jump
-            }
-            bot.setSprinting(false);
-            bot.setFallDistance(1.0F); // For some reason, bot always has 0 fall distance - so crits don't work without this trick
-            ai.attack(ai.getTarget().getPlayer());
-            bot.setFallDistance(0F);
-            bot.setSprinting(true);
+        if (hitType == CRITICAL_HIT) {
+            bot.setFallDistance(1.0F);
+            this.doAttack();
+            bot.setFallDistance(0.0F);
+        } else {
+            this.doAttack();
         }
+    }
+
+    public void doAttack() {
+        ai.attack(ai.getTarget().getPlayer());
         bot.swingArm();
     }
 
     public double getPingDistance() {
-        Vector pingLocation = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
+        //Vector pingLocation = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
+        Vector pingLocation = bot.getEyeLocation().toVector();
         return BoundingBoxUtils.distanceTo(pingLocation.toLocation(bot.getEyeLocation().getWorld()), ai.getTarget().getDelayedBoundingBox());
     }
 

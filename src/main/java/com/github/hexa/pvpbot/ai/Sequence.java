@@ -2,15 +2,24 @@ package com.github.hexa.pvpbot.ai;
 
 public abstract class Sequence {
 
+    public Timer timer;
+    public Sequence subSequence;
+
     public int totalSteps;
     public int step;
     public boolean finished;
     public boolean keepStep;
-    public boolean isOnTimer;
+    public boolean nextStep;
 
     public Sequence(int totalSteps) {
+        this.timer = null;
+        this.subSequence = null;
         this.totalSteps = totalSteps;
         this.finished = true;
+    }
+
+    public static Sequence empty() {
+        return SequenceBuilder.emptySequence();
     }
 
     public void start() {
@@ -20,24 +29,41 @@ public abstract class Sequence {
         this.finished = false;
         this.step = 1;
         this.keepStep = false;
-        this.isOnTimer = false;
+        this.nextStep = false;
+        this.onStart();
     }
 
     public void tick() {
         if (this.finished) {
             return;
         }
-        if (this.step >= this.totalSteps) {
+        this.onTick();
+
+        if (keepStep) {
+            this.keepStep = false;
+        } else {
+            this.step++;
+        }
+        if (this.step > this.totalSteps) {
             this.finished = true;
             return;
         }
-        if (keepStep) {
-            this.keepStep = false;
-        }
-        else if (!isOnTimer) {
-            this.step++;
+        if (this.nextStep) {
+            this.nextStep = false;
+            this.tick();
         }
     }
+
+    public void stop() {
+        this.onStop();
+        this.finished = true;
+    }
+
+    public void onStart() {}
+
+    public void onTick() {}
+
+    public void onStop() {}
 
     public void tickStep(int step) {
         int backup = this.step;
@@ -52,16 +78,95 @@ public abstract class Sequence {
         this.step = backup;
     }
 
+    public void nextStep() {
+        this.nextStep = true;
+    }
+
+    public boolean wait(int ticks) {
+        if (ticks == 0) {
+            this.nextStep();
+            return true;
+        }
+
+        if (ticks == 1) {
+            return true;
+        }
+
+        if (this.timer == null) {
+            this.timer = new Timer(this, ticks);
+        }
+
+        this.timer.update();
+        if (this.timer.finished) {
+            this.timer = null;
+            return true;
+        }
+
+        this.keepStep();
+        return false;
+    }
+
+    public boolean waitUntil(Condition condition) {
+        if (condition.isTrue()) {
+            this.nextStep();
+            return true;
+        }
+        this.keepStep = true;
+        return false;
+    }
+
+    public boolean waitUntil(Condition condition, int expireIn) {
+        return waitUntil(condition, expireIn, SequenceBlock.empty());
+    }
+
+    public boolean waitUntil(Condition condition, int expireIn, SequenceBlock onExpire) {
+        if (wait(expireIn)) {
+            onExpire.execute();
+            return true;
+        } else if (waitUntil(condition)) {
+            this.stopTimer();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean tickSubsequence(Sequence subSequence) {
+        if (this.subSequence != subSequence) {
+            this.subSequence = subSequence;
+            this.subSequence.start();
+        }
+
+        this.subSequence.tick();
+        if (this.subSequence.finished) {
+            this.subSequence = null;
+            this.nextStep();
+            return true;
+        }
+
+        this.keepStep = true;
+        return false;
+    }
+
+    public void stopSubsequence() {
+        if (this.subSequence != null) {
+            this.subSequence.stop();
+        }
+    }
+
+    public void keepStep() {
+        this.keepStep = true;
+    }
+
     public boolean hasTimer() {
-        return Timers.getTimers().containsKey(this);
+        return this.timer != null;
     }
 
-    public Timer getTimer() {
-        return Timers.getTimers().get(this);
+    public void stopTimer() {
+        if (this.timer != null) {
+            this.timer.stop();
+        }
     }
 
-    public void stop() {
-        this.finished = true;
-    }
+
 
 }
