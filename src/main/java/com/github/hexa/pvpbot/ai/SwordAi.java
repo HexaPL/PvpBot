@@ -16,13 +16,22 @@ import static com.github.hexa.pvpbot.ai.ControllableBot.Direction.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.HitType.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.ComboMethod.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.SprintResetMethod.*;
+import static com.github.hexa.pvpbot.ai.SwordAi.FirstHitMethod.*;
 
 public class SwordAi implements Ai {
+
+    public static FirstHitMethod defaultFirstHitMethod = REACH_HIT;
+    public static SprintResetMethod defaultSprintResetMethod = S_TAP;
+    public static ComboMethod defaultComboMethod = STRAIGHTLINE;
+
+    public static final float hitSpeed = 0.92F;
+    public static int wTapLength = 7;
 
     public ControllableBot bot;
     public Target target;
     private boolean enabled;
     private PropertyMap properties;
+    public Sequences sequences;
 
     public int botCombo;
     public int opponentCombo;
@@ -31,20 +40,20 @@ public class SwordAi implements Ai {
     public Sequence sprintResetSequence;
     public ComboMethod comboMethod;
     public Sequence comboSequence;
-    public Sequences sequences;
+    public FirstHitMethod firstHitMethod;
+    public Sequence firstHitSequence;
 
     private boolean canSprint;
     private boolean freshSprint;
     private boolean isSprintResetting;
+    private boolean firstHit;
     public int ticksSinceAttack;
     public int ticksSinceDamage;
 
-    public static int wTapLength = 5;
-
-    public static float hitSpeed = 0.9F;
     public HitType hitType;
     public Sequence hitSequence;
     public boolean isCritting;
+    private boolean doSTap;
 
     public SwordAi(ControllableBot bot) {
         this.bot = bot;
@@ -53,18 +62,20 @@ public class SwordAi implements Ai {
         this.enabled = true;
         this.target = this.selectTarget();
 
-        this.sprintResetMethod = WTAP;
-        this.setComboMethod(CRIT_SPAM);
+        this.sprintResetMethod = defaultSprintResetMethod;
+        this.setHitSequence(sequences.reachHit);
+        this.setComboMethod(defaultComboMethod);
+        this.setFirstHitMethod(defaultFirstHitMethod);
         this.sprintResetSequence = sequences.sprintReset;
         this.ticksSinceAttack = 0;
         this.ticksSinceDamage = 0;
         this.canSprint = true;
         this.freshSprint = true;
         this.isSprintResetting = false;
-
-        this.setHitSequence(sequences.sprintHitSequence);
+        this.firstHit = false;
         this.hitType = SPRINT_HIT;
         this.isCritting = false;
+        this.doSTap = false;
     }
 
     @Override
@@ -105,14 +116,30 @@ public class SwordAi implements Ai {
             this.setHitSequence(jumpAndCritSequence);
             this.hitSequence.start();
         }*/
+
+        if (this.botCombo > 0 && this.ticksSinceAttack > 20) {
+            this.botCombo = 0;
+        }
+
+        // Check for first-hit
+        if (!firstHit) {
+            if (this.firstHitMethod == REACH_HIT && this.getPingDistance() > 4) {
+                this.firstHit = true;
+            }
+        }
+
         if (this.comboMethod == CRIT_SPAM && this.botCombo >= 2 && this.hitSequence.finished) {
-            this.setHitSequence(sequences.jumpAndCritSequence);
+            this.setHitSequence(sequences.jumpAndCrit);
+            this.hitSequence.start();
+        } else if (this.firstHit && this.hitSequence.finished) {
+            this.setHitSequence(this.firstHitSequence);
             this.hitSequence.start();
         } else if (this.hitSequence.finished) {
-            this.setHitSequence(sequences.sprintHitSequence);
+            this.setHitSequence(sequences.reachHit);
             this.hitSequence.start();
         }
     }
+
 
     public void tickSprintReset() {
         if (this.comboMethod != WASD) {
@@ -171,6 +198,7 @@ public class SwordAi implements Ai {
         if (knockback) {
             this.registerAttack();
         }
+        this.firstHit = false;
 
     }
 
@@ -185,7 +213,7 @@ public class SwordAi implements Ai {
         }
     }
 
-    private int getWTapLength() {
+    private int getSprintResetLength() {
         if (this.botCombo <= 1) {
             return 8;
         } else {
@@ -195,7 +223,7 @@ public class SwordAi implements Ai {
                 case SWITCH:
                     return 4;
                 case UPPERCUT:
-                    return 6;
+                    return 3;
                 case CRIT_SPAM:
                     return 5;
                 default:
@@ -210,14 +238,16 @@ public class SwordAi implements Ai {
         if (bot.isSprinting()) {
             setFreshSprint(false);
         }
+
         if (bot.isSprinting() && this.comboMethod != WASD) {
+            if (this.sprintResetMethod == S_TAP && this.firstHit) {
+                this.doSTap = true;
+            }
             sprintResetSequence.start();
         }
+
         if (this.botCombo > 1 || this.comboMethod == WASD) {
             comboSequence.start();
-            if (comboMethod == UPPERCUT) {
-                comboSequence.tick();
-            }
         }
     }
 
@@ -267,6 +297,18 @@ public class SwordAi implements Ai {
         }
     }
 
+    public void setFirstHitMethod(FirstHitMethod firstHitMethod) {
+        if (this.firstHitMethod == firstHitMethod) {
+            return;
+        }
+        this.firstHitMethod = firstHitMethod;
+        switch (firstHitMethod) {
+            case REACH_HIT:
+                this.firstHitSequence = sequences.reachHit;
+                break;
+        }
+    }
+
     public boolean canHit() {
 
         // Calculate distance to target
@@ -311,7 +353,7 @@ public class SwordAi implements Ai {
     public float getCurrentHitSpeed() {
         switch (this.comboMethod) {
             case UPPERCUT:
-                return 0.92F;
+                return 0.95F;
             case CRIT_SPAM:
                 return hitSpeed;
             default:
@@ -321,6 +363,10 @@ public class SwordAi implements Ai {
 
     public void randomizeCombo() {
         ComboMethod randomMethod = ComboMethod.values()[MathHelper.random(0, ComboMethod.values().length - 1)];
+        if (randomMethod == CRIT_SPAM) {
+            this.randomizeCombo();
+            return;
+        }
         this.setComboMethod(randomMethod);
     }
 
@@ -422,7 +468,7 @@ public class SwordAi implements Ai {
 
     public class Sequences {
 
-        public Sequence sprintHitSequence = new Sequence(2) {
+        public Sequence reachHit = new Sequence(2) {
             @Override
             public void onStart() {
                 if (!isSprintResetting()) {
@@ -443,7 +489,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence jumpAndCritSequence = new Sequence(5) {
+        public Sequence jumpAndCrit = new Sequence(5) {
             @Override
             public void onStart() {
                 if (!isSprintResetting()) {
@@ -458,7 +504,7 @@ public class SwordAi implements Ai {
                         this.waitUntil(() -> !isSprintResetting());
                         break;
                     case 2:
-                        this.tickSubsequence(sequences.jumpSequence);
+                        this.tickSubsequence(sequences.jump);
                         break;
                     case 3:
                         this.wait(7);
@@ -471,7 +517,7 @@ public class SwordAi implements Ai {
                         this.nextStep();
                         break;
                     case 5:
-                        this.tickSubsequence(critSequence);
+                        this.tickSubsequence(crit);
                         break;
                 }
             }
@@ -482,7 +528,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence critSequence = new Sequence(3) {
+        public Sequence crit = new Sequence(3) {
             @Override
             public void onTick() {
                 switch (step) {
@@ -510,6 +556,8 @@ public class SwordAi implements Ai {
         };
 
         public Sequence sprintReset = new Sequence(4) {
+            private int length = 0;
+
             @Override
             public void onTick() {
                 switch (step) {
@@ -517,20 +565,21 @@ public class SwordAi implements Ai {
                         this.wait(1);
                         break;
                     case 2:
-                        if (sprintResetMethod == WTAP) {
-                            bot.setMoveForward(0);
-                        } else if (sprintResetMethod == STAP) {
+                        if (sprintResetMethod == S_TAP && doSTap) {
                             bot.setMoveForward(BACKWARD);
+                            length = 3;
+                            doSTap = false;
+                        } else {
+                            bot.setMoveForward(0);
+                            length = getSprintResetLength();
                         }
-                        bot.setSprinting(false);
                         isSprintResetting = true;
                         break;
                     case 3:
-                        this.wait(getWTapLength());
+                        this.wait(length);
                         break;
                     case 4:
                         bot.setMoveForward(FORWARD);
-                        bot.setSprinting(true);
                         setFreshSprint(true);
                         isSprintResetting = false;
                         break;
@@ -611,9 +660,19 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence uppercutCombo = SequenceBuilder.create().onTick(1, () -> {
-            bot.jump();
-        }).save();
+        public Sequence uppercutCombo = new Sequence(2) {
+            @Override
+            public void onTick() {
+                switch (step) {
+                    case 1:
+                        this.wait(1);
+                        break;
+                    case 2:
+                        bot.jump();
+                        break;
+                }
+            }
+        };
 
         public final Sequence wasdCombo = new Sequence(8) {
             @Override
@@ -679,7 +738,7 @@ public class SwordAi implements Ai {
 
         public Sequence critSpam = Sequence.empty(); // Critspam in HitController
 
-        public Sequence jumpSequence = new Sequence(2) {
+        public Sequence jump = new Sequence(2) {
             @Override
             public void onTick() {
                 switch (step) {
@@ -700,11 +759,15 @@ public class SwordAi implements Ai {
     }
 
     public enum SprintResetMethod {
-        WTAP, STAP
+        W_TAP, S_TAP
     }
 
     public enum ComboMethod {
         STRAIGHTLINE, CIRCLE, SWITCH, WASD, UPPERCUT, CRIT_SPAM
+    }
+
+    public enum FirstHitMethod {
+        REACH_HIT, HIT_SELECT, BAIT
     }
 
 }
