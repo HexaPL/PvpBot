@@ -1,12 +1,13 @@
 package com.github.hexa.pvpbot.v1_16_R3;
 
 import com.github.hexa.pvpbot.PvpBotPlugin;
-import com.github.hexa.pvpbot.ai.BotAI;
-import com.github.hexa.pvpbot.ai.BotAIBase;
+import com.github.hexa.pvpbot.ai.Ai;
 import com.github.hexa.pvpbot.ai.ControllableBot;
+import com.github.hexa.pvpbot.ai.SwordAi;
 import com.github.hexa.pvpbot.skins.Skin;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import com.github.hexa.pvpbot.util.MathHelper;
+import com.github.hexa.pvpbot.util.PropertyMap;
 import com.github.hexa.pvpbot.util.RotationUtils;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.server.v1_16_R3.*;
@@ -22,14 +23,13 @@ import org.bukkit.util.Vector;
 
 import java.net.URL;
 
-import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.FORWARD;
-
 public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
     public String name;
     public EntityPlayer owner;
-    private BotAI ai;
+    private Ai ai;
     private Skin skin;
+    private PropertyMap properties;
 
     private float forward;
     private float strafe;
@@ -43,8 +43,9 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         super(minecraftserver, worldserver, gameprofile, playerinteractmanager);
         this.name = name;
         this.owner = owner;
+        this.properties = new PropertyMap(this);
         // Initialize AI
-        this.ai = new BotAIBase(this);
+        this.ai = new SwordAi(this);
         // Initialize variables
         this.init();
     }
@@ -89,7 +90,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         String timeS = String.valueOf(time);
         timeS = timeS.substring(timeS.length() - 5);
         if (this.getAI().getTarget() == null) {
-            ((BotAIBase)this.getAI()).selectTarget();
+            ((SwordAi)this.getAI()).selectTarget();
         }
         //Location loc = ((BotAIBase)getAI()).hitController.getPingPredictedLocation(this.getEyeLocation());
         float reach2 = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.getBukkitEntity().getEyeLocation()/*this.getBukkitEntity().getEyeLocation()*/, this.getAI().getTarget().getDelayedBoundingBox()), 3);
@@ -155,12 +156,12 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     }
 
     @Override
-    public void setAI(BotAI ai) {
+    public void setAI(Ai ai) {
         this.ai = ai;
     }
 
     @Override
-    public BotAI getAI() {
+    public Ai getAI() {
         return this.ai;
     }
 
@@ -252,6 +253,11 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     @Override
     public String getBotName() {
         return this.name;
+    }
+
+    @Override
+    public PropertyMap getProperties() {
+        return this.properties;
     }
 
     @Override

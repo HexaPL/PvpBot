@@ -2,10 +2,10 @@ package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.util.MathHelper;
-import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
@@ -39,7 +39,7 @@ public class Target {
     private void updateDelays() {
         int ping = bot.getControllable().getAI().getPing();
         int currentDelay =
-                BotAIBase.basePingDelay + // 150 ms (3 ticks) - base delay of another player from client perspective
+                150 + // 150 ms (3 ticks) - base delay of another player from client perspective
                 ping; // time needed for movement packets to go from server to client
         if (currentDelay != this.delay) {
             this.delay = currentDelay;
@@ -93,7 +93,7 @@ public class Target {
         }
     }
 
-    public void updateLocationCache() {
+    public void updateLocationCache() { // TODO - start from 0 (current position) instead of 1
         if (this.locationCacheSize == 0) {
             return;
         }

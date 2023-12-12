@@ -1,8 +1,8 @@
 package com.github.hexa.pvpbot.util;
 
-import com.github.hexa.pvpbot.util.org.bukkit.util.BoundingBox;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 public class BoundingBoxUtils {

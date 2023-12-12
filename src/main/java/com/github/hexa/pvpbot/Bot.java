@@ -2,6 +2,7 @@ package com.github.hexa.pvpbot;
 
 import com.github.hexa.pvpbot.ai.ControllableBot;
 import com.github.hexa.pvpbot.skins.Skin;
+import com.github.hexa.pvpbot.util.PropertyMap;
 import org.bukkit.entity.Player;
 
 import java.net.URL;
@@ -15,6 +16,7 @@ public interface Bot {
         return (ControllableBot) this;
     }
 
+    public PropertyMap getProperties();
 
     public Player getOwner();
 

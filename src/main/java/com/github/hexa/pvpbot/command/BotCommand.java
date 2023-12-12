@@ -2,9 +2,6 @@ package com.github.hexa.pvpbot.command;
 
 import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
-import com.github.hexa.pvpbot.ai.BotAI;
-import com.github.hexa.pvpbot.util.PropertyMap;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -13,8 +10,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
-
-import static com.github.hexa.pvpbot.ai.BotAIBase.Direction.FORWARD;
 
 public class BotCommand implements CommandExecutor {
     @Override

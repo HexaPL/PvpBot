@@ -8,9 +8,9 @@ import org.bukkit.util.Vector;
 
 public interface ControllableBot extends Bot {
 
-    public void setAI(BotAI ai);
+    public void setAI(Ai ai);
 
-    public BotAI getAI();
+    public Ai getAI();
 
     public void setRotation(float yaw, float pitch);
 
@@ -50,4 +50,10 @@ public interface ControllableBot extends Bot {
 
     public float getAttackCooldown();
 
+    public class Direction {
+        public static final int FORWARD = 1;
+        public static final int BACKWARD = -1;
+        public static final int RIGHT = 1;
+        public static final int LEFT = -1;
+    }
 }
