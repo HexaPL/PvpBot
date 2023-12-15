@@ -19,6 +19,7 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
         instance = this;
         getServer().getPluginManager().registerEvents(this, this);
         this.getLogger().info("Registering BotManager for Craftbukkit version v1_16_R3");
+        //this.getServer().getPluginManager().registerEvents(new PingHandler.PlayerListener(), this); TODO - ping system
         this.botManager = new com.github.hexa.pvpbot.v1_16_R3.BotManager();
         this.getCommand("bot").setExecutor(new BotCommand());
         this.saveDefaultConfig();
