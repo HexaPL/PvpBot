@@ -20,8 +20,8 @@ import static com.github.hexa.pvpbot.ai.SwordAi.FirstHitMethod.*;
 
 public class SwordAi implements Ai {
 
+    public static SprintResetMethod defaultSprintResetMethod = W_TAP;
     public static FirstHitMethod defaultFirstHitMethod = REACH_HIT;
-    public static SprintResetMethod defaultSprintResetMethod = S_TAP;
     public static ComboMethod defaultComboMethod = STRAIGHTLINE;
 
     public static final float hitSpeed = 0.92F;
@@ -54,6 +54,7 @@ public class SwordAi implements Ai {
     public Sequence hitSequence;
     public boolean isCritting;
     private boolean doSTap;
+
 
     public SwordAi(ControllableBot bot) {
         this.bot = bot;
@@ -112,26 +113,28 @@ public class SwordAi implements Ai {
 
     public void updateHitSequence() {
         // TODO - jumpcrits based on velocity
-        /*if ((ai.movementController.ticksSinceAttack > 16 || ai.botCombo == 0) && this.getPingDistance() > 4 && (this.hitSequence != jumpAndCritSequence || this.hitSequence.finished)) {
-            this.setHitSequence(jumpAndCritSequence);
-            this.hitSequence.start();
-        }*/
 
         if (this.botCombo > 0 && this.ticksSinceAttack > 20) {
             this.botCombo = 0;
         }
 
         // Check for first-hit
+        boolean startFirstHit = false;
         if (!firstHit) {
             if (this.firstHitMethod == REACH_HIT && this.getPingDistance() > 4) {
-                this.firstHit = true;
+                startFirstHit = true;
+            } else if (this.firstHitMethod == HIT_SELECT && this.getPingDistance() > 5) {
+                startFirstHit = true;
+            } else if (this.firstHitMethod == BAIT && this.getPingDistance() > 6) {
+                startFirstHit = true;
             }
         }
 
         if (this.comboMethod == CRIT_SPAM && this.botCombo >= 2 && this.hitSequence.finished) {
             this.setHitSequence(sequences.jumpAndCrit);
             this.hitSequence.start();
-        } else if (this.firstHit && this.hitSequence.finished) {
+        } else if (startFirstHit) {
+            this.firstHit = true;
             this.setHitSequence(this.firstHitSequence);
             this.hitSequence.start();
         } else if (this.hitSequence.finished) {
@@ -306,6 +309,12 @@ public class SwordAi implements Ai {
             case REACH_HIT:
                 this.firstHitSequence = sequences.reachHit;
                 break;
+            case HIT_SELECT:
+                this.firstHitSequence = sequences.hitSelect;
+                break;
+            case BAIT:
+                this.firstHitSequence = sequences.bait;
+                break;
         }
     }
 
@@ -333,8 +342,6 @@ public class SwordAi implements Ai {
         if (this.bot.getAttackCooldown() < currentHitSpeed) {
             return false;
         }
-
-        // Check target's no damage ticks
 
         return canHit();
     }
@@ -380,10 +387,17 @@ public class SwordAi implements Ai {
         }
     }
 
+    public void doAttackIfCan() {
+        if (this.canHit()) {
+            this.doAttack();
+        }
+    }
+
     public void doAttack() {
         this.attack(this.getTarget().getPlayer());
         bot.swingArm();
     }
+
     @Override
     public PropertyMap getProperties() {
         return this.properties;
@@ -480,11 +494,79 @@ public class SwordAi implements Ai {
             public void onTick() {
                 switch (step) {
                     case 1:
-                        this.waitUntil(() -> canAttack());
+                        this.waitUntil(SwordAi.this::canAttack);
                         break;
                     case 2:
-                        doAttack(SPRINT_HIT);
+                        doAttack();
                         break;
+                }
+            }
+        };
+
+        public Sequence hitSelect = new Sequence(3) {
+            @Override
+            public void onStart() {
+                if (!isSprintResetting()) {
+                    bot.setMoveForward(FORWARD);
+                }
+            }
+
+            @Override
+            public void onTick() {
+                switch (step) {
+                    case 1:
+                        this.waitUntil(() -> opponentCombo > 0 && ticksSinceDamage == 0);
+                        break;
+                    case 2:
+                        this.wait(5);
+                        break;
+                    case 3:
+                        doAttackIfCan();
+                        break;
+                }
+            }
+        };
+
+        public Sequence bait = new Sequence(6) {
+            @Override
+            public void onStart() {
+                if (!isSprintResetting()) {
+                    bot.setMoveForward(FORWARD);
+                }
+            }
+
+            @Override
+            public void onTick() {
+                switch (step) {
+                    case 1:
+                        this.waitUntil(() -> getPingDistance() < 5.5); // TODO - actual calculations
+                        break;
+                    case 2:
+                        bot.setMoveForward(BACKWARD);
+                        isSprintResetting = true;
+                        break;
+                    case 3:
+                        this.wait(5);
+                        break;
+                    case 4:
+                        bot.setMoveForward(FORWARD);
+                        setFreshSprint(true);
+                        isSprintResetting = false;
+                        this.nextStep();
+                        break;
+                    case 5:
+                        this.waitUntil(SwordAi.this::canHit);
+                        break;
+                    case 6:
+                        doAttack();
+                        break;
+                }
+            }
+
+            @Override
+            public void onStop() {
+                if (isSprintResetting) {
+                    this.tickStep(4);
                 }
             }
         };
