@@ -2,10 +2,11 @@ package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.events.PacketEvent;
+import com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot;
 import com.github.hexa.pvpbot.v1_16_R3.PacketListener;
-import net.minecraft.server.v1_16_R3.Packet;
-import net.minecraft.server.v1_16_R3.PacketPlayOutChat;
+import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,34 +19,46 @@ import java.util.*;
 
 public class PacketDelayer implements Listener {
 
-    private HashMap<Packet, Long> packetQueue;
-    private HashSet<Packet> delayedPackets;
+    private HashMap<Packet<?>, Long> incomingPacketQueue;
+    private HashMap<Packet<?>, Long> outgoingPacketQueue;
+    private HashSet<Packet<?>> delayedPackets;
     public Player player;
     private PacketEventListener listener;
+    private int delay;
 
     public PacketDelayer(Player player) {
         this.player = player;
-        this.packetQueue = new HashMap<>();
+        this.delay = 100;
+        this.incomingPacketQueue = new HashMap<>();
+        this.outgoingPacketQueue = new HashMap<>();
         this.delayedPackets = new HashSet<>();
-        this.listener = new PacketEventListener();
+        this.listener = new PacketEventListener(PacketDirection.OUTGOING);
         PvpBotPlugin.getInstance().getServer().getPluginManager().registerEvents(this.listener, PvpBotPlugin.getInstance());
     }
 
     public void tick() {
+        if (this.listener.direction != PacketDirection.INCOMING) this.tick(PacketDirection.OUTGOING, outgoingPacketQueue);
+        if (this.listener.direction != PacketDirection.OUTGOING) this.tick(PacketDirection.INCOMING, incomingPacketQueue);
+    }
 
-        Iterator<Map.Entry<Packet, Long>> iterator = packetQueue.entrySet().iterator();
+    private void tick(PacketDirection direction, HashMap<Packet<?>, Long> queue) {
+        Iterator<Map.Entry<Packet<?>, Long>> iterator = queue.entrySet().iterator();
         ArrayList<Integer> tickDelays = new ArrayList<>();
         while (iterator.hasNext()) {
-            Map.Entry<Packet, Long> item = iterator.next();
-            if (System.currentTimeMillis() - item.getValue() >= 0) {
+            Map.Entry<Packet<?>, Long> item = iterator.next();
+            if (System.currentTimeMillis() - item.getValue() >= this.delay) {
                 Packet packet = item.getKey();
                 tickDelays.add((int) (System.currentTimeMillis() - item.getValue()));
                 delayedPackets.add(packet);
-                ((CraftPlayer) this.player).getHandle().playerConnection.sendPacket(packet);
+                PlayerConnection connection = ((CraftPlayer) this.player).getHandle().playerConnection;
+                if (direction == PacketDirection.OUTGOING) {
+                    connection.sendPacket(packet);
+                } else {
+                    packet.a(connection);
+                }
                 iterator.remove();
             }
         }
-
     }
 
     public static class PlayerJoinListener implements Listener {
@@ -80,19 +93,78 @@ public class PacketDelayer implements Listener {
 
     public class PacketEventListener implements Listener {
 
+        public PacketDirection direction;
+
+        public PacketEventListener(PacketDirection direction) {
+            this.direction = direction;
+        }
+
         @EventHandler
         public void onOutgoingPacket(PacketEvent.Outgoing event) {
+            if (this.direction == PacketDirection.INCOMING) {
+                return;
+            }
+            if (delay == 0) {
+                return;
+            }
             if (delayedPackets.contains(event.getPacket())) {
                 delayedPackets.remove(event.getPacket());
                 return;
             }
-            if (!(event.getPacket() instanceof PacketPlayOutChat)) {
+            if (shouldDelayPacket(event.getPacket())) {
                 long l = System.currentTimeMillis();
-                Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> packetQueue.put(event.getPacket(), l));
+                Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> outgoingPacketQueue.put(event.getPacket(), l));
                 event.setCancelled(true);
             }
         }
 
+        @EventHandler
+        public void onIncomingPacket(PacketEvent.Incoming event) {
+            if (this.direction == PacketDirection.OUTGOING) {
+                return;
+            }
+            if (delay == 0) {
+                return;
+            }
+            if (delayedPackets.contains(event.getPacket())) {
+                delayedPackets.remove(event.getPacket());
+                return;
+            }
+            Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> {
+                if (event.getPacket() instanceof PacketPlayInFlying) {
+                    PacketPlayInFlying movePacket = ((PacketPlayInFlying) event.getPacket());
+                    Location loc = new Location(event.getPlayer().getWorld(), movePacket.x, movePacket.y, movePacket.z);
+                    EntityPlayerBot.packetLocations.put(event.getPlayer(), loc);
+                }
+            });
+            if (shouldDelayPacket(event.getPacket())) {
+                long l = System.currentTimeMillis();
+                Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> {
+                    incomingPacketQueue.put(event.getPacket(), l);
+                });
+                event.setCancelled(true);
+            }
+        }
+
+    }
+
+    private boolean shouldDelayPacket(Packet packet) {
+        String packetName = packet.getClass().getSimpleName();
+        switch (packetName) {
+            case "PacketPlayInPosition":
+            case "PacketPlayInLook":
+            case "PacketPlayInPositionLook":
+            case "PacketPlayOutEntityLook":
+            case "PacketPlayOutRelEntityMove":
+            case "PacketPlayOutRelEntityMoveLook":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public enum PacketDirection {
+        INCOMING, OUTGOING, BOTH
     }
 
 }

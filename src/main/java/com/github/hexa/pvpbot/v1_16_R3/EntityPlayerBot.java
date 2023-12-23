@@ -22,6 +22,7 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import java.net.URL;
+import java.util.HashMap;
 
 public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
@@ -38,6 +39,8 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     private float prevPitch;
 
     private boolean hasPendingKnockback;
+
+    public static HashMap<Player, Location> packetLocations = new HashMap<>();
 
     public EntityPlayerBot(String name, EntityPlayer owner, MinecraftServer minecraftserver, WorldServer worldserver, GameProfile gameprofile, PlayerInteractManager playerinteractmanager) {
         super(minecraftserver, worldserver, gameprofile, playerinteractmanager);
@@ -94,7 +97,12 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         }
         //Location loc = ((BotAIBase)getAI()).hitController.getPingPredictedLocation(this.getEyeLocation());
         float reach2 = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.getBukkitEntity().getEyeLocation()/*this.getBukkitEntity().getEyeLocation()*/, this.getAI().getTarget().getDelayedBoundingBox()), 3);
-        Bukkit.broadcastMessage("SERVER TICK " + owner.displayName + " " + velocity + ", reach " + reach + "(" + reach2 + ")" + ", ms " + timeS);
+        //Bukkit.broadcastMessage("SERVER TICK " + owner.displayName + " " + velocity + ", reach " + reach + "(" + reach2 + ")" + ", ms " + timeS);
+        //float diff = MathHelper.roundTo((float) this.ai.getTarget().getPlayer().getLocation().distance(packetLocations.get(this.ai.getTarget().getPlayer())), 4);
+        float realReach = MathHelper.roundTo((float) this.getBukkitEntity().getEyeLocation().distance(this.ai.getTarget().getPlayer().getEyeLocation()), 3);
+        float delayedReach = MathHelper.roundTo((float) this.getBukkitEntity().getEyeLocation().distance(this.getAI().getTarget().getDelayedHeadLocation()), 3);
+        //float delayedReach = MathHelper.roundTo((float) this.getBukkitEntity().getLocation().distance(packetLocations.get(this.ai.getTarget().getPlayer())), 3);
+        Bukkit.broadcastMessage("SERVER TICK " + owner.displayName + " " + velocity + ", reach " + realReach + ", packetReach " + delayedReach + ", ms " + timeS);
     }
 
     public void sendRotationPackets(EntityPlayer target) {

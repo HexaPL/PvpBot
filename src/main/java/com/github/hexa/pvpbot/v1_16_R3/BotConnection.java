@@ -23,7 +23,7 @@ public class BotConnection extends PlayerConnection {
         }
         bot.clearPendingKnockback();
         Vec3D knockback = bot.getMot();
-        int tickDelay = Math.round(bot.getAI().getPing() / 50F);
+        int tickDelay = Math.round((bot.getAI().getPing() / 2F) / 50F);
         Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> {
             bot.setMot(knockback);
             // Jump reset

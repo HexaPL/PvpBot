@@ -24,7 +24,7 @@ public class SwordAi implements Ai {
     public static FirstHitMethod defaultFirstHitMethod = REACH_HIT;
     public static ComboMethod defaultComboMethod = STRAIGHTLINE;
 
-    public static final float hitSpeed = 0.92F;
+    public static float hitSpeed = 0.93F;
     public static int wTapLength = 7;
 
     public ControllableBot bot;
@@ -93,8 +93,6 @@ public class SwordAi implements Ai {
 
         this.ticksSinceAttack++;
         this.ticksSinceDamage++;
-
-        target.updateLocationCache();
     }
 
     protected void updateTarget() {

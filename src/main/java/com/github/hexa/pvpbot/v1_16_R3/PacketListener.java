@@ -45,6 +45,7 @@ public class PacketListener extends ChannelDuplexHandler {
         if (msg instanceof Packet) {
             Packet packet = (Packet) msg;
             PacketEvent.Incoming event = new PacketEvent.Incoming(packet, this.player.getBukkitEntity());
+            Bukkit.getPluginManager().callEvent(event);
             if (event.isCancelled()) {
                 return;
             }
