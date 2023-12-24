@@ -35,4 +35,8 @@ public class VectorUtils {
         return motion.multiply(1.835);
     }
 
+    public static Vector blockSpeedToMotion(Vector blockSpeed) {
+        return blockSpeed.multiply(1 / 1.835);
+    }
+
 }

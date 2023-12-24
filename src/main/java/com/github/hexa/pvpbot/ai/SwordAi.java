@@ -119,11 +119,10 @@ public class SwordAi implements Ai {
         // Check for first-hit
         boolean startFirstHit = false;
         if (!firstHit) {
-            if (this.firstHitMethod == REACH_HIT && this.getPingDistance() > 4) {
-                startFirstHit = true;
-            } else if (this.firstHitMethod == HIT_SELECT && this.getPingDistance() > 5) {
-                startFirstHit = true;
-            } else if (this.firstHitMethod == BAIT && this.getPingDistance() > 6) {
+            if (this.firstHitMethod == REACH_HIT && this.getPingDistance() > 4 ||
+                this.firstHitMethod == HIT_SELECT && this.getPingDistance() > 5 ||
+                this.firstHitMethod == BAIT && this.getPingDistance() > 6 ||
+                this.firstHitMethod == NOKB_CRIT && this.getPingDistance() > 8) {
                 startFirstHit = true;
             }
         }
@@ -153,7 +152,7 @@ public class SwordAi implements Ai {
     }
 
     protected void rotateToTarget() {
-        Location location = this.getTarget().getDelayedHeadLocation();
+        Location location = this.getTarget().getHeadLocation();
         this.rotateToLocation(location);
     }
 
@@ -313,6 +312,9 @@ public class SwordAi implements Ai {
             case BAIT:
                 this.firstHitSequence = sequences.bait;
                 break;
+            case NOKB_CRIT:
+                this.firstHitSequence = sequences.jumpAndCrit;
+                break;
         }
     }
 
@@ -320,7 +322,7 @@ public class SwordAi implements Ai {
 
         // Calculate distance to target
         Location eyeLocation = bot.getEyeLocation();
-        BoundingBox targetBoundingBox = this.getTarget().getDelayedBoundingBox();
+        BoundingBox targetBoundingBox = this.getTarget().getBoundingBox();
         double distance = BoundingBoxUtils.distanceTo(eyeLocation, targetBoundingBox);
 
         // Check if target is close enough to consider attacking
@@ -412,12 +414,12 @@ public class SwordAi implements Ai {
     public double getPingDistance() {
         //Vector pingLocation = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
         Vector pingLocation = bot.getEyeLocation().toVector();
-        return BoundingBoxUtils.distanceTo(pingLocation.toLocation(bot.getEyeLocation().getWorld()), this.getTarget().getDelayedBoundingBox());
+        return BoundingBoxUtils.distanceTo(pingLocation.toLocation(bot.getEyeLocation().getWorld()), this.getTarget().getBoundingBox());
     }
 
     public float getPingReach() {
         Location eyeLocation = bot.getEyeLocation();
-        double distanceNormal = BoundingBoxUtils.distanceTo(eyeLocation, this.getTarget().getDelayedBoundingBox());
+        double distanceNormal = BoundingBoxUtils.distanceTo(eyeLocation, this.getTarget().getBoundingBox());
         return (float) (this.getReach() + (distanceNormal - getPingDistance()));
     }
 
@@ -581,7 +583,7 @@ public class SwordAi implements Ai {
             public void onTick() {
                 switch (step) {
                     case 1:
-                        this.waitUntil(() -> !isSprintResetting());
+                        this.waitUntil(() -> !isSprintResetting() && getPingDistance() < 7);
                         break;
                     case 2:
                         this.tickSubsequence(sequences.jump);
@@ -847,7 +849,7 @@ public class SwordAi implements Ai {
     }
 
     public enum FirstHitMethod {
-        REACH_HIT, HIT_SELECT, BAIT
+        REACH_HIT, HIT_SELECT, BAIT, NOKB_CRIT
     }
 
 }
