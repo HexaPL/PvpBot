@@ -55,6 +55,8 @@ public class SwordAi implements Ai {
     public boolean isCritting;
     private boolean doSTap;
 
+    private Location lastLoc;
+
 
     public SwordAi(ControllableBot bot) {
         this.bot = bot;

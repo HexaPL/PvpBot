@@ -19,16 +19,18 @@ import java.util.*;
 
 public class PacketDelayer implements Listener {
 
+    public static HashMap<Player, PacketDelayer> packetDelayers = new HashMap<>();
+
     private HashMap<Packet<?>, Long> incomingPacketQueue;
     private HashMap<Packet<?>, Long> outgoingPacketQueue;
-    private HashSet<Packet<?>> delayedPackets;
+    public HashSet<Packet<?>> delayedPackets;
     public Player player;
     private PacketEventListener listener;
     private int delay;
 
     public PacketDelayer(Player player) {
         this.player = player;
-        this.delay = 100;
+        this.delay = 50;
         this.incomingPacketQueue = new HashMap<>();
         this.outgoingPacketQueue = new HashMap<>();
         this.delayedPackets = new HashSet<>();
@@ -69,6 +71,7 @@ public class PacketDelayer implements Listener {
         public void onJoin(PlayerJoinEvent event) {
             Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> {
                 this.packetDelayer = new PacketDelayer(event.getPlayer());
+                packetDelayers.put(event.getPlayer(), packetDelayer);
                 PacketListener.addPlayer(event.getPlayer());
                 new BukkitRunnable() {
                     @Override
@@ -86,6 +89,7 @@ public class PacketDelayer implements Listener {
         @EventHandler
         public void onQuit(PlayerQuitEvent event) {
             PacketListener.removePlayer(event.getPlayer());
+            packetDelayers.remove(event.getPlayer());
             this.packetDelayer = null;
         }
 
@@ -101,6 +105,7 @@ public class PacketDelayer implements Listener {
 
         @EventHandler
         public void onOutgoingPacket(PacketEvent.Outgoing event) {
+            /*
             if (this.direction == PacketDirection.INCOMING) {
                 return;
             }
@@ -115,11 +120,27 @@ public class PacketDelayer implements Listener {
                 long l = System.currentTimeMillis();
                 Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> outgoingPacketQueue.put(event.getPacket(), l));
                 event.setCancelled(true);
-            }
+            }*/
+            test2(event);
         }
 
         @EventHandler
         public void onIncomingPacket(PacketEvent.Incoming event) {
+
+        }
+
+        private void test2(PacketEvent.Outgoing event) {Packet<?> packet = event.getPacket();
+            if (shouldBlockPacket(packet)) {
+                if (packet instanceof PacketPlayOutEntity.PacketPlayOutRelEntityMoveLook && delayedPackets.contains(packet)) {
+                    delayedPackets.remove(packet);
+                } else {
+                    event.setCancelled(true);
+                }
+            }
+
+        }
+
+        private void test1(PacketEvent.Incoming event) {
             if (this.direction == PacketDirection.OUTGOING) {
                 return;
             }
@@ -148,12 +169,26 @@ public class PacketDelayer implements Listener {
 
     }
 
-    private boolean shouldDelayPacket(Packet packet) {
+    private boolean shouldDelayPacket(Packet<?> packet) {
         String packetName = packet.getClass().getSimpleName();
         switch (packetName) {
             case "PacketPlayInPosition":
             case "PacketPlayInLook":
             case "PacketPlayInPositionLook":
+            case "PacketPlayOutEntityLook":
+            case "PacketPlayOutRelEntityMove":
+            case "PacketPlayOutRelEntityMoveLook":
+                return true;
+            case "PacketPlayOutEntityVelocity":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean shouldBlockPacket(Packet<?> packet) {
+        String packetName = packet.getClass().getSimpleName();
+        switch (packetName) {
             case "PacketPlayOutEntityLook":
             case "PacketPlayOutRelEntityMove":
             case "PacketPlayOutRelEntityMoveLook":
