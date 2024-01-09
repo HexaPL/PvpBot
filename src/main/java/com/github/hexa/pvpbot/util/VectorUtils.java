@@ -23,8 +23,12 @@ public class VectorUtils {
         return getVectorFromTo(from.toVector(), to.toVector());
     }
 
+    public static Vector interpolate(Vector vector1, Vector vector2, float partialTicks) {
+        return vector1.clone().add(vector2.clone().subtract(vector1).multiply(partialTicks));
+    }
+
     public static Vector getVectorFromTo(Vector from, Vector to) {
-        return to.subtract(from);
+        return to.clone().subtract(from);
     }
 
     public static Location getLocationZero() {
@@ -32,11 +36,11 @@ public class VectorUtils {
     }
 
     public static Vector motionToBlockSpeed(Vector motion) {
-        return motion.multiply(1.835);
+        return motion.clone().multiply(1.835);
     }
 
     public static Vector blockSpeedToMotion(Vector blockSpeed) {
-        return blockSpeed.multiply(1 / 1.835);
+        return blockSpeed.clone().multiply(1 / 1.835);
     }
 
 }

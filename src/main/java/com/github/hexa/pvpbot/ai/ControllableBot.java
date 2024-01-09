@@ -50,10 +50,10 @@ public interface ControllableBot extends Bot {
 
     public float getAttackCooldown();
 
-    public class Direction {
+    public class MoveDirection {
         public static final int FORWARD = 1;
         public static final int BACKWARD = -1;
-        public static final int RIGHT = 1;
-        public static final int LEFT = -1;
+        public static final int RIGHT = -1;
+        public static final int LEFT = 1;
     }
 }

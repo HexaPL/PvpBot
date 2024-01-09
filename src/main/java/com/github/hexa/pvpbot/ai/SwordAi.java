@@ -12,7 +12,7 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-import static com.github.hexa.pvpbot.ai.ControllableBot.Direction.*;
+import static com.github.hexa.pvpbot.ai.ControllableBot.MoveDirection.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.HitType.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.ComboMethod.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.SprintResetMethod.*;
@@ -26,6 +26,7 @@ public class SwordAi implements Ai {
 
     public static float hitSpeed = 0.93F;
     public static int wTapLength = 7;
+    public static int maxStrafeDistance = 15;
 
     public ControllableBot bot;
     public Target target;
@@ -42,6 +43,7 @@ public class SwordAi implements Ai {
     public Sequence comboSequence;
     public FirstHitMethod firstHitMethod;
     public Sequence firstHitSequence;
+    public Sequence strafeSequence;
 
     private boolean canSprint;
     private boolean freshSprint;
@@ -69,6 +71,7 @@ public class SwordAi implements Ai {
         this.setHitSequence(sequences.reachHit);
         this.setComboMethod(defaultComboMethod);
         this.setFirstHitMethod(defaultFirstHitMethod);
+        this.strafeSequence = sequences.switchStrafe;
         this.sprintResetSequence = sequences.sprintReset;
         this.ticksSinceAttack = 0;
         this.ticksSinceDamage = 0;
@@ -89,6 +92,9 @@ public class SwordAi implements Ai {
 
         this.updateHitSequence();
         this.hitSequence.tick();
+
+        this.updateStrafeSequence();
+        this.tickStrafe();
 
         this.tickSprintReset();
         this.tickCombo();
@@ -142,6 +148,9 @@ public class SwordAi implements Ai {
         }
     }
 
+    public void updateStrafeSequence() {
+        this.strafeSequence = sequences.switchStrafe;
+    }
 
     public void tickSprintReset() {
         if (this.comboMethod != WASD) {
@@ -151,6 +160,16 @@ public class SwordAi implements Ai {
 
     public void tickCombo() {
         comboSequence.tick();
+    }
+
+    public void tickStrafe() {
+        if (!bot.getProperties().getBoolean("strafe")) {
+            return;
+        }
+        if (this.strafeSequence.finished && this.getPingDistance() < maxStrafeDistance && this.firstHit) {
+            this.strafeSequence.start();
+        }
+        this.strafeSequence.tick();
     }
 
     protected void rotateToTarget() {
@@ -406,10 +425,11 @@ public class SwordAi implements Ai {
     }
 
     private void createProperties() {
-        this.properties = bot.getProperties();
+        properties = bot.getProperties();
         properties.set("reach", 3.0F, Float.class);
         properties.set("ping", 0, Integer.class);
         properties.set("jumpReset", false, Boolean.class);
+        properties.set("strafe", false, Boolean.class);
     }
 
 
@@ -833,6 +853,56 @@ public class SwordAi implements Ai {
                         bot.jump();
                         break;
                 }
+            }
+        };
+
+        public Sequence counterStrafe = new Sequence(2) {
+            @Override
+            public void onTick() {
+                switch (step) {
+                    case 1:
+                        this.waitUntil(() -> getPingDistance() < maxStrafeDistance && firstHit);
+                        break;
+                    case 2:
+                        if (getPingDistance() < maxStrafeDistance && firstHit) {
+                            bot.setMoveStrafe(target.strafeDirection);
+                            this.keepStep();
+                        } else {
+                            this.stop();
+                        }
+                        break;
+                }
+            }
+
+            @Override
+            public void onStop() {
+                bot.setMoveStrafe(0);
+            }
+        };
+        
+        public Sequence switchStrafe = new Sequence(2) {
+            private float lastDirection = 1;
+            @Override
+            public void onTick() {
+                switch (step) {
+                    case 1:
+                        this.waitUntil(() -> getPingDistance() < maxStrafeDistance && firstHit);
+                        break;
+                    case 2:
+                        if (getPingDistance() < maxStrafeDistance && firstHit) {
+                            bot.setMoveStrafe(lastDirection * -1);
+                            this.keepStep();
+                        } else {
+                            this.stop();
+                        }
+                        break;
+                }
+            }
+
+            @Override
+            public void onStop() {
+                lastDirection = bot.getMoveStrafe();
+                bot.setMoveStrafe(0);
             }
         };
 
