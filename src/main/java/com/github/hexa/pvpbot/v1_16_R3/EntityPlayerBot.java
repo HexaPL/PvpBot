@@ -74,7 +74,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         super.tick();
         super.playerTick();
 
-        pingDelayDebug();
+        //pingDelayDebug();
         //tickEndMS = SystemUtils.getTimeMillis();
     }
 
@@ -95,14 +95,8 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         if (this.getAI().getTarget() == null) {
             ((SwordAi)this.getAI()).selectTarget();
         }
-        //Location loc = ((BotAIBase)getAI()).hitController.getPingPredictedLocation(this.getEyeLocation());
-        float reach2 = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.getBukkitEntity().getEyeLocation()/*this.getBukkitEntity().getEyeLocation()*/, this.getAI().getTarget().getBoundingBox()), 3);
-        //Bukkit.broadcastMessage("SERVER TICK " + owner.displayName + " " + velocity + ", reach " + reach + "(" + reach2 + ")" + ", ms " + timeS);
-        //float diff = MathHelper.roundTo((float) this.ai.getTarget().getPlayer().getLocation().distance(packetLocations.get(this.ai.getTarget().getPlayer())), 4);
-        float realReach = MathHelper.roundTo((float) this.getBukkitEntity().getEyeLocation().distance(this.ai.getTarget().getPlayer().getEyeLocation()), 3);
-        float delayedReach = MathHelper.roundTo((float) this.getBukkitEntity().getEyeLocation().distance(this.getAI().getTarget().getHeadLocation()), 3);
-        //float delayedReach = MathHelper.roundTo((float) this.getBukkitEntity().getLocation().distance(packetLocations.get(this.ai.getTarget().getPlayer())), 3);
-        Bukkit.broadcastMessage("SERVER TICK " + owner.displayName + " " + velocity + ", reach " + realReach + ", packetReach " + delayedReach + ", ms " + timeS);
+        float reach2 = MathHelper.roundTo((float) BoundingBoxUtils.distanceTo(this.getBukkitEntity().getEyeLocation(), this.getAI().getTarget().getBoundingBox()), 3);
+        Bukkit.broadcastMessage("SERVER " + velocity + ", reach " + reach + ", pingReach " + reach2 + ", ms " + timeS);
     }
 
     public void sendRotationPackets(EntityPlayer target) {

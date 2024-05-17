@@ -6,6 +6,7 @@ import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.PropertyMap;
 import com.github.hexa.pvpbot.util.VectorUtils;
 import net.minecraft.server.v1_16_R3.DamageSource;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
@@ -45,6 +46,9 @@ public class SwordAi implements Ai {
     public Sequence firstHitSequence;
     public Sequence strafeSequence;
 
+    public Vector motionVectorTowardsTarget;
+    public double motionTowardsTarget;
+
     private boolean canSprint;
     private boolean freshSprint;
     private boolean isSprintResetting;
@@ -67,12 +71,15 @@ public class SwordAi implements Ai {
         this.enabled = true;
         this.target = this.selectTarget();
 
+        this.lastLoc = bot.getEyeLocation();
         this.sprintResetMethod = defaultSprintResetMethod;
         this.setHitSequence(sequences.reachHit);
         this.setComboMethod(defaultComboMethod);
         this.setFirstHitMethod(defaultFirstHitMethod);
         this.strafeSequence = sequences.switchStrafe;
         this.sprintResetSequence = sequences.sprintReset;
+        this.motionVectorTowardsTarget = new Vector(0, 0, 0);
+        this.motionTowardsTarget = 0;
         this.ticksSinceAttack = 0;
         this.ticksSinceDamage = 0;
         this.canSprint = true;
@@ -99,12 +106,17 @@ public class SwordAi implements Ai {
         this.tickSprintReset();
         this.tickCombo();
 
+        this.lastLoc = bot.getEyeLocation();
         this.ticksSinceAttack++;
         this.ticksSinceDamage++;
     }
 
     protected void updateTarget() {
         target.update();
+        Location targetLocation = target.getHeadLocation();
+        double distanceDelta = targetLocation.distance(lastLoc) - targetLocation.distance(bot.getEyeLocation());
+        this.motionVectorTowardsTarget = VectorUtils.blockSpeedToMotion(VectorUtils.getVectorFromTo(lastLoc, targetLocation).normalize().multiply(distanceDelta));
+        this.motionTowardsTarget = this.motionVectorTowardsTarget.length() * Math.signum(distanceDelta);
     }
 
     public Target selectTarget() {
@@ -537,13 +549,13 @@ public class SwordAi implements Ai {
             public void onTick() {
                 switch (step) {
                     case 1:
-                        this.waitUntil(() -> opponentCombo > 0 && ticksSinceDamage == 0);
+                        this.waitUntil(() -> ticksSinceDamage == 0 || getPingDistance() < 2.0F);
                         break;
                     case 2:
                         this.wait(5);
                         break;
                     case 3:
-                        doAttackIfCan();
+                        if (canHit()) doAttack();
                         break;
                 }
             }

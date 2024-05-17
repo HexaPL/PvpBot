@@ -36,6 +36,9 @@ public class Skin {
     }
 
     public static void setForGameProfile(GameProfile gameProfile, Skin skin) {
+        if (skin == null) {
+            return;
+        }
         PropertyMap propertyMap = gameProfile.getProperties();
         if (propertyMap.containsKey("textures")) {
             Property property = propertyMap.get("textures").iterator().next();
@@ -54,8 +57,10 @@ public class Skin {
 
     public static Skin getFromPlayer(Player player) {
         GameProfile gameProfile = getGameProfile(player);
-        Property property = gameProfile.getProperties().get("textures").iterator().next();
-        if (property == null) {
+        Property property;
+        try {
+            property = gameProfile.getProperties().get("textures").iterator().next();
+        } catch (Exception e) {
             LogUtils.warn("Player " + player.getName() + " does not have skin properties.");
             LogUtils.warn("Probable causes: server is in offline mode or player is a NPC.");
             return null;
