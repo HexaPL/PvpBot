@@ -125,7 +125,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
         if (damaged && velocityChanged) {
             this.hasPendingKnockback = true;
-            this.getAI().damageEntity(damagesource);
+            this.getAI().onDamageEntity(new NmsDamageSource(damagesource));
         }
 
         return damaged;

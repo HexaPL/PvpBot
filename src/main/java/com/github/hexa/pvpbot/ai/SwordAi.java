@@ -1,11 +1,7 @@
 package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.Bot;
-import com.github.hexa.pvpbot.util.BoundingBoxUtils;
-import com.github.hexa.pvpbot.util.MathHelper;
-import com.github.hexa.pvpbot.util.PropertyMap;
-import com.github.hexa.pvpbot.util.VectorUtils;
-import net.minecraft.server.v1_16_R3.DamageSource;
+import com.github.hexa.pvpbot.util.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -227,19 +223,36 @@ public class SwordAi implements Ai {
         // Restore sprint state to not affect later movement
         bot.setSprinting(wasSprinting);
 
-        // Simulate client-server de-sync and make bot sprint-reset soon
-        if (knockback) {
-            this.registerAttack();
+        this.ticksSinceAttack = 0;
+        if (bot.isSprinting()) {
+            this.setFreshSprint(false);
         }
+
+        // Trigger sprint reset
+        if (bot.isSprinting() && this.comboMethod != WASD) {
+            if (this.sprintResetMethod == S_TAP && this.firstHit) {
+                this.doSTap = true;
+            }
+            sprintResetSequence.start();
+        }
+
+        // Trigger combo
+        if (this.botCombo > 1 || this.comboMethod == WASD) {
+            comboSequence.start();
+        }
+
         this.firstHit = false;
 
     }
 
     // Called whenever bot get damaged
     @Override
-    public void damageEntity(DamageSource damageSource) {
+    public void onDamageEntity(IDamageSource damageSource) {
+        if (!damageSource.getSource().equals("player")) {
+            return;
+        }
         this.botCombo = 0;
-        this.opponentCombo++; // TODO - detect opponent from damageSource
+        this.opponentCombo++;
         this.ticksSinceDamage = 0;
         if (!comboSequence.finished) {
             comboSequence.stop();
@@ -262,25 +275,6 @@ public class SwordAi implements Ai {
                 default:
                     return wTapLength;
             }
-        }
-    }
-
-    public void registerAttack() {
-        this.ticksSinceAttack = 0;
-        //this.randomizeCombo();
-        if (bot.isSprinting()) {
-            setFreshSprint(false);
-        }
-
-        if (bot.isSprinting() && this.comboMethod != WASD) {
-            if (this.sprintResetMethod == S_TAP && this.firstHit) {
-                this.doSTap = true;
-            }
-            sprintResetSequence.start();
-        }
-
-        if (this.botCombo > 1 || this.comboMethod == WASD) {
-            comboSequence.start();
         }
     }
 
@@ -358,14 +352,13 @@ public class SwordAi implements Ai {
         BoundingBox targetBoundingBox = this.getTarget().getBoundingBox();
         double distance = BoundingBoxUtils.distanceTo(eyeLocation, targetBoundingBox);
 
-        // Check if target is close enough to consider attacking
-        if (distance > this.getReach() + 3) {
+        if (distance > this.getReach()) {
             return false;
         }
 
         // Perform raytrace to target's hitbox
-        RayTraceResult result = targetBoundingBox.rayTrace(eyeLocation.toVector(), eyeLocation.getDirection(), this.getReach() + 3);
-        return result != null && distance <= this.getPingReach();
+        RayTraceResult result = targetBoundingBox.rayTrace(eyeLocation.toVector(), eyeLocation.getDirection(), this.getReach() + 1);
+        return result != null;
     }
 
     public boolean canAttack() {
@@ -420,12 +413,6 @@ public class SwordAi implements Ai {
         }
     }
 
-    public void doAttackIfCan() {
-        if (this.canHit()) {
-            this.doAttack();
-        }
-    }
-
     public void doAttack() {
         this.attack(this.getTarget().getPlayer());
         bot.swingArm();
@@ -446,15 +433,7 @@ public class SwordAi implements Ai {
 
 
     public double getPingDistance() {
-        //Vector pingLocation = bot.getEyeLocation().toVector().add(VectorUtils.motionToBlockSpeed(bot.getMotion().multiply((bot.getAI().getPing() / 2F) / 50F)));
-        Vector pingLocation = bot.getEyeLocation().toVector();
-        return BoundingBoxUtils.distanceTo(pingLocation.toLocation(bot.getEyeLocation().getWorld()), this.getTarget().getBoundingBox());
-    }
-
-    public float getPingReach() {
-        Location eyeLocation = bot.getEyeLocation();
-        double distanceNormal = BoundingBoxUtils.distanceTo(eyeLocation, this.getTarget().getBoundingBox());
-        return (float) (this.getReach() + (distanceNormal - getPingDistance()));
+        return BoundingBoxUtils.distanceTo(bot.getEyeLocation(), this.getTarget().getBoundingBox());
     }
 
     @Override
@@ -516,7 +495,7 @@ public class SwordAi implements Ai {
 
     public class Sequences {
 
-        public Sequence reachHit = new Sequence(2) {
+        public final Sequence reachHit = new Sequence(2) {
             @Override
             public void onStart() {
                 if (!isSprintResetting()) {
@@ -537,7 +516,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence hitSelect = new Sequence(3) {
+        public final Sequence hitSelect = new Sequence(3) {
             @Override
             public void onStart() {
                 if (!isSprintResetting()) {
@@ -561,7 +540,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence bait = new Sequence(6) {
+        public final Sequence bait = new Sequence(6) {
             @Override
             public void onStart() {
                 if (!isSprintResetting()) {
@@ -605,7 +584,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence jumpAndCrit = new Sequence(5) {
+        public final Sequence jumpAndCrit = new Sequence(5) {
             @Override
             public void onStart() {
                 if (!isSprintResetting()) {
@@ -644,7 +623,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence crit = new Sequence(3) {
+        public final Sequence crit = new Sequence(3) {
             @Override
             public void onTick() {
                 switch (step) {
@@ -671,7 +650,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence sprintReset = new Sequence(4) {
+        public final Sequence sprintReset = new Sequence(4) {
             private int length = 0;
 
             @Override
@@ -710,9 +689,9 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence straightlineCombo = Sequence.empty();
+        public final Sequence straightlineCombo = Sequence.empty();
 
-        public Sequence switchCombo = new Sequence(3) {
+        public final Sequence switchCombo = new Sequence(3) {
             private int previousDirection = RIGHT;
 
             @Override
@@ -738,7 +717,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence circleCombo = new Sequence(3) {
+        public final Sequence circleCombo = new Sequence(3) {
             private int direction = MathHelper.random(1, 2);
             private boolean interrupted = false;
             @Override
@@ -776,7 +755,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence uppercutCombo = new Sequence(2) {
+        public final Sequence uppercutCombo = new Sequence(2) {
             @Override
             public void onTick() {
                 switch (step) {
@@ -785,6 +764,21 @@ public class SwordAi implements Ai {
                         break;
                     case 2:
                         bot.jump();
+                        break;
+                }
+            }
+        };
+
+        public final Sequence uppercutComboV2 = new Sequence(2) {
+            @Override
+            public void onTick() {
+                switch (step) {
+                    case 1:
+                        this.waitUntil(SwordAi.this::canAttack);
+                        break;
+                    case 2:
+                        bot.jump();
+                        doAttack();
                         break;
                 }
             }
@@ -806,7 +800,7 @@ public class SwordAi implements Ai {
                     case 3:
                         this.wait(1);
                         break;
-                    case 4: // 4
+                    case 4:
                         bot.setMoveForward(BACKWARD);
                         bot.setMoveStrafe(0);
                         break;
@@ -838,7 +832,7 @@ public class SwordAi implements Ai {
         };
 
         // TODO - working sprintcut
-        public Sequence sprintcutCombo = new Sequence(2) {
+        public final Sequence sprintcutCombo = new Sequence(2) {
             @Override
             public void onTick() {
                 switch (step) {
@@ -852,9 +846,9 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence critSpam = Sequence.empty(); // Critspam in HitController
+        public final Sequence critSpam = Sequence.empty(); // Critspam in HitController
 
-        public Sequence jump = new Sequence(2) {
+        public final Sequence jump = new Sequence(2) {
             @Override
             public void onTick() {
                 switch (step) {
@@ -868,7 +862,7 @@ public class SwordAi implements Ai {
             }
         };
 
-        public Sequence counterStrafe = new Sequence(2) {
+        public final Sequence counterStrafe = new Sequence(2) {
             @Override
             public void onTick() {
                 switch (step) {
@@ -892,7 +886,7 @@ public class SwordAi implements Ai {
             }
         };
         
-        public Sequence switchStrafe = new Sequence(2) {
+        public final Sequence switchStrafe = new Sequence(2) {
             private float lastDirection = 1;
             @Override
             public void onTick() {
