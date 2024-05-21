@@ -55,6 +55,9 @@ public abstract class Sequence {
     }
 
     public void stop() {
+        if (this.subSequence != null && !this.subSequence.finished) {
+            this.subSequence.stop();
+        }
         this.onStop();
         this.finished = true;
     }
@@ -115,6 +118,8 @@ public abstract class Sequence {
         return false;
     }
 
+    // TODO - fix it...
+    /*
     public boolean waitUntil(Condition condition, int expireIn) {
         return waitUntil(condition, expireIn, SequenceBlock.empty());
     }
@@ -128,10 +133,13 @@ public abstract class Sequence {
             return true;
         }
         return false;
-    }
+    }*/
 
-    public boolean tickSubsequence(Sequence subSequence) {
+    public void tickSubsequence(Sequence subSequence) {
         if (this.subSequence != subSequence) {
+            if (this.subSequence != null && !this.subSequence.finished) {
+                this.subSequence.stop();
+            }
             this.subSequence = subSequence;
             this.subSequence.start();
         }
@@ -140,11 +148,17 @@ public abstract class Sequence {
         if (this.subSequence.finished) {
             this.subSequence = null;
             this.nextStep();
-            return true;
+            return;
         }
 
         this.keepStep = true;
-        return false;
+    }
+
+    public void tickSubsequence(Sequence subSequence, boolean breakOnStop) {
+        this.tickSubsequence(subSequence);
+        if (breakOnStop && this.subSequence.finished) {
+            this.stop();
+        }
     }
 
     public void stopSubsequence() {
