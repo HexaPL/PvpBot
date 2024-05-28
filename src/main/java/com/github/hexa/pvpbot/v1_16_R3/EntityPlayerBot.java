@@ -22,7 +22,9 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
@@ -38,7 +40,8 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     private float prevYaw;
     private float prevPitch;
 
-    private boolean hasPendingKnockback;
+    public boolean hasPendingKnockback;
+    public List<Vec3D> pendingKnockbacks = new ArrayList<>();
 
     public static HashMap<Player, Location> packetLocations = new HashMap<>();
 
@@ -74,7 +77,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         super.tick();
         super.playerTick();
 
-        //pingDelayDebug();
+        if (PvpBotPlugin.debug) pingDelayDebug();
         //tickEndMS = SystemUtils.getTimeMillis();
     }
 
@@ -124,12 +127,27 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         boolean damaged = super.damageEntity(damagesource, f);
 
         if (damaged && velocityChanged) {
-            this.hasPendingKnockback = true;
+            this.velocityChanged = false;
+            Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> velocityChanged = true);
+            //this.hasPendingKnockback = true;
             this.getAI().onDamageEntity(new NmsDamageSource(damagesource));
         }
 
         return damaged;
 
+    }
+
+    public Vec3D tempKnockback;
+
+    @Override
+    public void setMot(Vec3D vec3d) {
+        /*
+        if (this.hasPendingKnockback) {
+            this.hasPendingKnockback = false;
+            super.setMot(tempKnockback);
+            return;
+        }*/
+        super.setMot(vec3d);
     }
 
     public Vector getMotion() {

@@ -35,6 +35,11 @@ public class MathHelper {
         return (float) (Math.round(var * decimal) / decimal);
     }
 
+    public static double roundTo(double var, int count) {
+        double decimal = Math.pow(10, count);
+        return Math.round(var * decimal) / decimal;
+    }
+
     public static boolean chanceOf(float percent) {
         percent = clamp(percent, 0F, 1F);
         if (percent == 0F) return false;

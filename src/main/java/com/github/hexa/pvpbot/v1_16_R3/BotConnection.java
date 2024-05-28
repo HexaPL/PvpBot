@@ -1,8 +1,9 @@
 package com.github.hexa.pvpbot.v1_16_R3;
 
-import com.github.hexa.pvpbot.PvpBotPlugin;
-import net.minecraft.server.v1_16_R3.*;
-import org.bukkit.Bukkit;
+import net.minecraft.server.v1_16_R3.MinecraftServer;
+import net.minecraft.server.v1_16_R3.NetworkManager;
+import net.minecraft.server.v1_16_R3.Packet;
+import net.minecraft.server.v1_16_R3.PlayerConnection;
 
 public class BotConnection extends PlayerConnection {
 
@@ -15,23 +16,7 @@ public class BotConnection extends PlayerConnection {
 
     @Override
     public void sendPacket(Packet<?> packet) {
-        if (!(packet instanceof PacketPlayOutEntityVelocity)) {
-            return;
-        }
-        if (!bot.hasPendingKnockback()) {
-            return;
-        }
-        bot.clearPendingKnockback();
-        Vec3D knockback = bot.getMot();
-        int tickDelay = Math.round((bot.getAI().getPing() / 2F) / 50F);
-        Bukkit.getScheduler().runTaskLater(PvpBotPlugin.getInstance(), () -> {
-            bot.setMot(knockback);
-            // Jump reset
-            boolean jumpReset = bot.getAI().getProperties().getBoolean("jumpReset");
-            if (jumpReset && bot.isOnGround()) {
-                bot.jump();
-            }
-        }, 1 + tickDelay);
+
     }
 
 }

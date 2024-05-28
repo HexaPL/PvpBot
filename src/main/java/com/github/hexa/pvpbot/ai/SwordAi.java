@@ -1,7 +1,9 @@
 package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.Bot;
+import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.util.*;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
@@ -102,12 +104,35 @@ public class SwordAi implements Ai {
 
         this.updateSequences();
 
+        //this.tickTest();
+
         this.hitSequence.tick();
         this.strafeSequence.tick();
 
         this.lastLoc = bot.getEyeLocation();
         this.ticksSinceAttack++;
         this.ticksSinceDamage++;
+
+        ticks++;
+    }
+
+    private void tickTest() {
+        if (getPingDistance() < 6.0F) {
+            //double locationPing = MathHelper.roundTo(target.getPlayer().getEyeLocation().toVector().getZ(), 3);
+            //double locationReal = MathHelper.roundTo(target.getHeadLocation().toVector().getZ(), 3);
+            //Bukkit.broadcastMessage("SERVER location: " + locationPing + "(real " + locationReal + "), " + LogUtils.getTimeString());
+            //Vector loc1 = target.getPlayer().getEyeLocation().toVector();
+            Vector loc1 = target.getHeadLocation().toVector();
+            Vector loc2 = bot.getEyeLocation().toVector();
+            double distance = MathHelper.roundTo(loc1.distance(loc2), 3);
+            double distance2 = MathHelper.roundTo(BoundingBoxUtils.distanceTo(bot.getEyeLocation(), target.getBoundingBox()), 3);
+            double location = MathHelper.roundTo(bot.getEyeLocation().toVector().getZ(), 3);
+            double locP = MathHelper.roundTo(loc1.getZ(), 3);
+            double locB = MathHelper.roundTo(loc2.getZ(), 3);
+            //Bukkit.broadcastMessage("SERVER location: " + location + ", " + LogUtils.getTimeString());
+            //Bukkit.broadcastMessage("SERVER distance: " + distance + ", " + LogUtils.getTimeString());
+            Bukkit.broadcastMessage("SERVER P: " + locP + " B: " + locB + " D: " + distance + " D2: " + distance2 + ", " + LogUtils.getTimeString());
+        }
     }
 
     protected void updateTarget() {
@@ -145,7 +170,9 @@ public class SwordAi implements Ai {
             if (this.firstHitMethod == NORMAL_HIT && this.getPingDistance() > 4 ||
                 this.firstHitMethod == HIT_SELECT && this.getPingDistance() > 5 ||
                 this.firstHitMethod == BAIT && this.getPingDistance() > 6 ||
-                this.firstHitMethod == JUMP_CRIT && this.shouldJumpCrit()) {
+                this.firstHitMethod == JUMP_CRIT && this.shouldJumpCrit() ||
+                this.firstHitMethod == CRIT_DEFLECTION && this.getPingDistance() > 4
+            ) {
                 startFirstHit = true;
             }
         }
@@ -206,6 +233,9 @@ public class SwordAi implements Ai {
             case JUMP_CRIT:
                 this.firstHitSequence = sequences.jumpAndCrit;
                 break;
+            case CRIT_DEFLECTION:
+                this.firstHitSequence = sequences.critDeflection;
+                break;
         }
     }
 
@@ -254,7 +284,16 @@ public class SwordAi implements Ai {
         bot.setRotation(vecYaw, vecPitch);
     }
 
+    public static int ticks = 0;
+
     public void attack(Player player) {
+
+        if (PvpBotPlugin.debug) {
+            double motY = MathHelper.roundTo(target.realMot.getY(), 3);
+            ticks = 0;
+            //Bukkit.broadcastMessage("[DEBUG] Bot hit: reach " + MathHelper.roundTo((float) getPingDistance(), 3) + ", motY: " + motY + ", " + timeS);
+            Bukkit.broadcastMessage("[DEBUG] Bot hit: reach " + MathHelper.roundTo((float) getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (0)");
+        }
 
         // Cache initial sprint state to restore it later
         boolean wasSprinting = bot.isSprinting();
@@ -311,7 +350,7 @@ public class SwordAi implements Ai {
     // TODO - sprint reset length calculations
     public int getWTapLength() {
         if (this.botCombo <= 1) {
-            return 8;
+            return wTapLength;
         } else {
             switch (this.comboMethod) {
                 case SWITCH_COMBO:
@@ -560,7 +599,7 @@ public class SwordAi implements Ai {
     }
 
     public enum HitMethod {
-        NORMAL_HIT, HIT_SELECT, BAIT, JUMP_CRIT, UPPERCUT, WASD_HIT
+        NORMAL_HIT, HIT_SELECT, BAIT, CRIT_DEFLECTION, JUMP_CRIT, UPPERCUT, WASD_HIT
     }
 
     public enum ComboMethod {

@@ -1,10 +1,12 @@
 package com.github.hexa.pvpbot.ai;
 
+import com.github.hexa.pvpbot.PvpBotPlugin;
+import com.github.hexa.pvpbot.util.LogUtils;
 import com.github.hexa.pvpbot.util.MathHelper;
+import org.bukkit.Bukkit;
 
 import static com.github.hexa.pvpbot.ai.ControllableBot.MoveDirection.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.HitType.CRITICAL_HIT;
-import static com.github.hexa.pvpbot.ai.SwordAi.SprintResetMethod.S_TAP;
 
 public class SequencesSword extends SwordAi {
 
@@ -101,6 +103,29 @@ public class SequencesSword extends SwordAi {
         public void onStop() {
             if (ai.bot.getMoveForward() != FORWARD) {
                 ai.setMoveForward(FORWARD);
+            }
+        }
+    };
+
+    public final Sequence critDeflection = new Sequence(3) {
+        @Override
+        public void onStart() {
+            ai.setMoveForward(FORWARD);
+        }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    this.waitUntil(() -> ai.target.getPlayer().isOnGround() && ai.canAttack());
+                    break;
+                case 2:
+                    ai.doAttack();
+                    break;
+                case 3:
+                    this.tickSubsequence(ai.sprintResetSequence);
+                    break;
+
             }
         }
     };
@@ -206,23 +231,67 @@ public class SequencesSword extends SwordAi {
         @Override
         public void onStop() {
             if (!finished) {
-                this.tickStep(8); // To end sprint reset safely
+                this.tickStep(9); // To end sprint reset safely
             }
         }
     };
 
-    public final Sequence wTap = new Sequence(3) {
+    public final Sequence wTap = new Sequence(4) {
 
         @Override
         public void onTick() {
             switch (step) {
                 case 1:
+                    this.wait(1);
+                    break;
+                case 2:
+                    ai.setMoveForward(0);
+                    break;
+                case 3:
+                    this.wait(ai.getWTapLength());
+                    break;
+                case 4:
+                    ai.setMoveForward(FORWARD);
+                    break;
+            }
+        }
+
+        @Override
+        public void onStop() {
+            ai.setMoveForward(FORWARD);
+        }
+    };
+
+    public final Sequence wTap_counterRunning = new Sequence(3) {
+
+        private int tick = 0;
+        private boolean running = false;
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    //Bukkit.broadcastMessage("Start sprint reset" + ", Y: " + MathHelper.roundTo((float) ai.target.motion.getY(), 3) + ", motTar: " + MathHelper.roundTo(ai.getTarget().motionTowardsBot, 3));
+                    tick = 1;
+                    running = false;
                     ai.setMoveForward(0);
                     break;
                 case 2:
+                    //Bukkit.broadcastMessage("Tick " + tick + ", distance: " + MathHelper.roundTo((float) ai.getPingDistance(), 3) + ", Y: " + MathHelper.roundTo((float) ai.target.motion.getY(), 3) + ", motTar: " + MathHelper.roundTo(ai.getTarget().motionTowardsBot, 3));
+                    if (ai.target.motion.getY() == 0 && ai.getTarget().motionTowardsBot < 0.05) {
+                        //Bukkit.broadcastMessage("Running detected!");
+                        //Bukkit.broadcastMessage("Stop sprint reset");
+                        ai.setMoveForward(FORWARD);
+                        running = true;
+                        this.stopTimer();
+                        break;
+                    }
                     this.wait(ai.getWTapLength());
+                    tick++;
                     break;
                 case 3:
+                    //Bukkit.broadcastMessage("Stop sprint reset");
+                    if (running) ai.bot.jump();
                     ai.setMoveForward(FORWARD);
                     break;
             }

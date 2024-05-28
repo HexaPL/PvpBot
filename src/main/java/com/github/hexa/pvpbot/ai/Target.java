@@ -6,6 +6,8 @@ import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import com.github.hexa.pvpbot.util.VectorUtils;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
@@ -30,7 +32,11 @@ public class Target {
     public double blockSpeed;
     public Vector motionVectorTowardsBot;
     public double motionTowardsBot;
+    public double blockSpeedTowardsBot;
     public int strafeDirection;
+
+    public Vector realMot = new Vector();
+    public Vector realLastLoc = new Vector();
 
     public Target(Player player, Bot bot) {
         this.player = player;
@@ -96,9 +102,14 @@ public class Target {
         double distanceDelta = botLocation.distance(previousLocation) - botLocation.distance(currentLocation);
         this.motionVectorTowardsBot = VectorUtils.blockSpeedToMotion(VectorUtils.getVectorFromTo(previousLocation, botLocation).normalize().multiply(distanceDelta));
         this.motionTowardsBot = this.motionVectorTowardsBot.length() * Math.signum(distanceDelta);
+        this.blockSpeedTowardsBot = VectorUtils.motionToBlockSpeed(motionVectorTowardsBot).length() * Math.signum(distanceDelta);
 
         double cross = motion.clone().setY(0).normalize().crossProduct(lookDirection.clone().setY(0).normalize()).getY();
         this.strafeDirection = (int) (Math.abs(cross) < 0.3 ? 0 : 1 * Math.signum(-cross));
+
+        realMot = getPlayer().getLocation().toVector().subtract(realLastLoc);
+        realLastLoc = getPlayer().getLocation().toVector();
+
     }
 
     private BoundingBox calculateDelayedBoundingBox() {

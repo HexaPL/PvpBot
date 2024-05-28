@@ -10,4 +10,9 @@ public class LogUtils {
         Bukkit.getLogger().log(Level.WARNING, "[PvpBot] " + s);
     }
 
+    public static String getTimeString() {
+        String timeS = String.valueOf(System.currentTimeMillis());
+        return timeS.substring(timeS.length() - 5);
+    }
+
 }

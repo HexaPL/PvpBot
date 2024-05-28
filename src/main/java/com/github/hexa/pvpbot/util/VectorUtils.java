@@ -43,4 +43,8 @@ public class VectorUtils {
         return blockSpeed.clone().multiply(1 / 1.835);
     }
 
+    public static Vector roundVector(Vector vector, int to) {
+        return new Vector(MathHelper.roundTo(vector.getX(), to), MathHelper.roundTo(vector.getY(), to), MathHelper.roundTo(vector.getZ(), to));
+    }
+
 }
