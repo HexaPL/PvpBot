@@ -270,6 +270,10 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         return super.getAttackCooldown(0.5F);
     }
 
+    public void setAttackCooldown(int attackCooldown) {
+        this.at = attackCooldown;
+    }
+
     @Override
     public String getBotName() {
         return this.name;

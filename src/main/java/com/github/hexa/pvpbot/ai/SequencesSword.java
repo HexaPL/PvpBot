@@ -1,8 +1,9 @@
 package com.github.hexa.pvpbot.ai;
 
-import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.util.LogUtils;
 import com.github.hexa.pvpbot.util.MathHelper;
+import com.github.hexa.pvpbot.util.VectorUtils;
+import com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot;
 import org.bukkit.Bukkit;
 
 import static com.github.hexa.pvpbot.ai.ControllableBot.MoveDirection.*;
@@ -11,9 +12,11 @@ import static com.github.hexa.pvpbot.ai.SwordAi.HitType.CRITICAL_HIT;
 public class SequencesSword extends SwordAi {
 
     private final SwordAi ai;
+    private final ControllableBot bot;
 
     public SequencesSword(SwordAi ai) {
         this.ai = ai;
+        this.bot = ai.bot;
     }
 
     public final Sequence normalHit = new Sequence(3) {
@@ -30,6 +33,34 @@ public class SequencesSword extends SwordAi {
                     break;
                 case 2:
                     ai.doAttack();
+                    this.nextStep();
+                    break;
+                case 3:
+                    this.tickSubsequence(ai.sprintResetSequence);
+                    break;
+            }
+        }
+    };
+
+    public final Sequence normalHit_withUppercut = new Sequence(3) {
+        @Override
+        public void onStart() {
+            ai.setMoveForward(FORWARD);
+        }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    this.waitUntil(ai::canAttack);
+                    if (ai.getPingDistance() - 3.0F < (2 * ai.blockSpeed + 0.2F) && ai.getPingDistance() - 3.0F > (2 * ai.blockSpeed) && bot.isOnGround()) {
+                        //Bukkit.broadcastMessage("Uppercut: " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString());
+                        bot.jump();
+                    }
+                    break;
+                case 2:
+                    ai.doAttack();
+                    this.nextStep();
                     break;
                 case 3:
                     this.tickSubsequence(ai.sprintResetSequence);
@@ -58,6 +89,7 @@ public class SequencesSword extends SwordAi {
                     break;
                 case 4:
                     ai.doAttack();
+                    this.nextStep();
                     break;
                 case 5:
                     this.tickSubsequence(ai.sprintResetSequence);
@@ -88,10 +120,11 @@ public class SequencesSword extends SwordAi {
                     ai.setMoveForward(FORWARD);
                     break;
                 case 5:
-                    this.waitUntil(ai::canHit);
+                    this.waitUntil(ai::canAttack);
                     break;
                 case 6:
                     ai.doAttack();
+                    this.nextStep();
                     break;
                 case 7:
                     this.tickSubsequence(ai.sprintResetSequence);
@@ -107,7 +140,7 @@ public class SequencesSword extends SwordAi {
         }
     };
 
-    public final Sequence critDeflection = new Sequence(3) {
+    public final Sequence critDeflection = new Sequence(4) {
         @Override
         public void onStart() {
             ai.setMoveForward(FORWARD);
@@ -117,12 +150,16 @@ public class SequencesSword extends SwordAi {
         public void onTick() {
             switch (step) {
                 case 1:
-                    this.waitUntil(() -> ai.target.getPlayer().isOnGround() && ai.canAttack());
+                    if (this.waitUntil(() -> ai.target.ticksSinceJump == 0)) Bukkit.broadcastMessage("JUMP distance: " + MathHelper.roundTo(ai.getPingDistance(), 3));
                     break;
                 case 2:
-                    ai.doAttack();
+                    this.waitUntil(() -> ai.target.getPlayer().isOnGround() && ai.canAttack());
                     break;
                 case 3:
+                    ai.doAttack();
+                    this.nextStep();
+                    break;
+                case 4:
                     this.tickSubsequence(ai.sprintResetSequence);
                     break;
 
@@ -242,7 +279,7 @@ public class SequencesSword extends SwordAi {
         public void onTick() {
             switch (step) {
                 case 1:
-                    this.wait(1);
+                    this.wait(ai.getSprintResetDelay());
                     break;
                 case 2:
                     ai.setMoveForward(0);
@@ -303,18 +340,27 @@ public class SequencesSword extends SwordAi {
         }
     };
 
-    public final Sequence sTap = new Sequence(3) {
+    public final Sequence sTap = new Sequence(6) {
 
         @Override
         public void onTick() {
             switch (step) {
                 case 1:
-                    ai.setMoveForward(BACKWARD);
+                    this.wait(ai.getSprintResetDelay());
                     break;
                 case 2:
-                    this.wait(ai.getSTapLength());
+                    ai.setMoveForward(0);
                     break;
                 case 3:
+                    ai.setMoveForward(BACKWARD);
+                    break;
+                case 4:
+                    this.wait(ai.getSTapLength());
+                    break;
+                case 5:
+                    ai.setMoveForward(0);
+                    break;
+                case 6:
                     ai.setMoveForward(FORWARD);
                     break;
             }
@@ -326,7 +372,64 @@ public class SequencesSword extends SwordAi {
         }
     };
 
-    public final Sequence upperCut = new Sequence(3) {
+    public final Sequence upperCut = new Sequence(9) {
+        private int tick = 0;
+        @Override
+        public void onStart() {
+            tick = 0;
+            ai.setMoveForward(FORWARD);
+        }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    this.waitUntil(() -> bot.isOnGround() && ai.getPingDistance() - 2 * ai.blockSpeed <= 3.0F); // TODO - use opponent motion too
+                    //Bukkit.broadcastMessage("Wait jump: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString());
+                    break;
+                case 2:
+                    bot.jump();
+                    tick = 0;
+                    //Bukkit.broadcastMessage("Jump: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
+                    break;
+                case 3:
+                    tick++;
+                    this.waitUntil(ai::canAttack);
+                    //Bukkit.broadcastMessage("Wait atk: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + "), " + bot.getAttackCooldown());
+                    break;
+                case 4:
+                    ai.doAttack();
+                    this.nextStep();
+                    //Bukkit.broadcastMessage("ATK: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
+                    break;
+                case 5:
+                    ai.setMoveForward(0);
+                    //Bukkit.broadcastMessage("StopF: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
+                    break;
+                case 6:
+                    tick++;
+                    ai.setMoveForward(BACKWARD);
+                    //Bukkit.broadcastMessage("StartB: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
+                    break;
+                case 7:
+                    tick++;
+                    this.wait(ai.getSTapLength());
+                    break;
+                case 8:
+                    ai.setMoveForward(0);
+                    //Bukkit.broadcastMessage("StopB: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
+                    break;
+                case 9:
+                    tick++;
+                    ai.setMoveForward(FORWARD);
+                    //Bukkit.broadcastMessage("StartF: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
+                    break;
+
+            }
+        }
+    };
+
+    public final Sequence upperCut_old = new Sequence(3) {
         @Override
         public void onStart() {
             ai.setMoveForward(FORWARD);

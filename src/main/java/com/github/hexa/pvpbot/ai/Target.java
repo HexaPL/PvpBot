@@ -4,10 +4,9 @@ import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.util.MathHelper;
 import com.github.hexa.pvpbot.util.BoundingBoxUtils;
 import com.github.hexa.pvpbot.util.VectorUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
@@ -26,6 +25,7 @@ public class Target {
     private Location headLocation;
     private HashMap<Integer, Location> locationCache;
     private HashMap<Integer, Vector> lookDirectionCache;
+    private HashMap<Integer, Vector> motionCache;
 
     public Vector motion;
     public Vector lookDirection;
@@ -34,6 +34,7 @@ public class Target {
     public double motionTowardsBot;
     public double blockSpeedTowardsBot;
     public int strafeDirection;
+    public int ticksSinceJump;
 
     public Vector realMot = new Vector();
     public Vector realLastLoc = new Vector();
@@ -49,6 +50,7 @@ public class Target {
         this.blockSpeed = 0;
         this.boundingBox = BoundingBoxUtils.getBoundingBox(player);
         this.headLocation = this.player.getEyeLocation();
+        this.ticksSinceJump = 0;
         this.initCaches();
     }
 
@@ -58,8 +60,9 @@ public class Target {
         this.boundingBox = this.calculateDelayedBoundingBox();
         this.headLocation = this.calculateDelayedHeadLocation();
         this.lookDirection = this.calculateDelayedLookDirection();
-        this.updateMotion();
         this.updateCache();
+        this.updateMotion();
+        this.updateJump();
     }
 
     private void updateDelays() {
@@ -87,9 +90,10 @@ public class Target {
         for (int i = 40; i > 0; i--) {
             locationCache.put(i, locationCache.get(i - 1));
             lookDirectionCache.put(i, lookDirectionCache.get(i - 1));
+            motionCache.put(i, motionCache.get(i - 1));
         }
         locationCache.put(0, this.getHeadLocation());
-        lookDirectionCache.put(0, this.getLookDirection());
+        motionCache.put(0, this.getMotion());
     }
 
     private void updateMotion() {
@@ -110,6 +114,13 @@ public class Target {
         realMot = getPlayer().getLocation().toVector().subtract(realLastLoc);
         realLastLoc = getPlayer().getLocation().toVector();
 
+    }
+
+    private void updateJump() {
+        ticksSinceJump++;
+        if (MathHelper.roundTo(this.getMotion().getY(), 2) == 0.23 && this.motionCache.get(1).getY() <= 0) {
+            this.ticksSinceJump = 0;
+        }
     }
 
     private BoundingBox calculateDelayedBoundingBox() {
@@ -178,9 +189,11 @@ public class Target {
     private void initCaches() {
         this.locationCache = new HashMap<>();
         this.lookDirectionCache = new HashMap<>();
+        this.motionCache = new HashMap<>();
         for (int i = 0; i <= 40; i++) {
             locationCache.put(i, this.getHeadLocation());
             lookDirectionCache.put(i, this.getLookDirection());
+            motionCache.put(i, this.getMotion());
         }
     }
 

@@ -5,6 +5,7 @@ import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.util.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
@@ -28,6 +29,7 @@ public class SwordAi implements Ai {
     public static float hitSpeed = 0.93F;
     public static int wTapLength = 7;
     public static int sTapLength = 3;
+    public static int sprintResetDelay = 1;
     public static int maxStrafeDistance = 15;
 
     public ControllableBot bot;
@@ -50,6 +52,7 @@ public class SwordAi implements Ai {
     public Sequence comboHitSequence;
     public Sequence comboStrafeSequence;
 
+    public double blockSpeed;
     public Vector motionVectorTowardsTarget;
     public double motionTowardsTarget;
 
@@ -87,6 +90,8 @@ public class SwordAi implements Ai {
         this.sprintResetSequence = sequences.wTap;
         this.motionVectorTowardsTarget = new Vector(0, 0, 0);
         this.motionTowardsTarget = 0;
+        this.blockSpeed = 0;
+
         this.ticksSinceAttack = 0;
         this.ticksSinceDamage = 0;
         this.freshSprint = true;
@@ -109,6 +114,7 @@ public class SwordAi implements Ai {
         this.hitSequence.tick();
         this.strafeSequence.tick();
 
+        this.blockSpeed = bot.getEyeLocation().distance(lastLoc);
         this.lastLoc = bot.getEyeLocation();
         this.ticksSinceAttack++;
         this.ticksSinceDamage++;
@@ -118,6 +124,7 @@ public class SwordAi implements Ai {
 
     private void tickTest() {
         if (getPingDistance() < 6.0F) {
+            if (target.getPlayer().getItemInHand().getType() != Material.GOLD_INGOT) return;
             //double locationPing = MathHelper.roundTo(target.getPlayer().getEyeLocation().toVector().getZ(), 3);
             //double locationReal = MathHelper.roundTo(target.getHeadLocation().toVector().getZ(), 3);
             //Bukkit.broadcastMessage("SERVER location: " + locationPing + "(real " + locationReal + "), " + LogUtils.getTimeString());
@@ -167,11 +174,11 @@ public class SwordAi implements Ai {
         // Check for first-hit
         boolean startFirstHit = false;
         if (!firstHit && (this.hitSequence.step == 1 || this.hitSequence.finished)) {
-            if (this.firstHitMethod == NORMAL_HIT && this.getPingDistance() > 4 ||
+            if (this.firstHitMethod == NORMAL_HIT && this.getPingDistance() > 5 ||
                 this.firstHitMethod == HIT_SELECT && this.getPingDistance() > 5 ||
                 this.firstHitMethod == BAIT && this.getPingDistance() > 6 ||
                 this.firstHitMethod == JUMP_CRIT && this.shouldJumpCrit() ||
-                this.firstHitMethod == CRIT_DEFLECTION && this.getPingDistance() > 4
+                this.firstHitMethod == CRIT_DEFLECTION && this.getPingDistance() > 6
             ) {
                 startFirstHit = true;
             }
@@ -373,9 +380,22 @@ public class SwordAi implements Ai {
                 case CIRCLE_COMBO:
                     return 2;
                 case UPPERCUT:
-                    return 3;
+                    return 2;
                 default:
                     return sTapLength; // 3
+            }
+        }
+    }
+
+    public int getSprintResetDelay() {
+        if (this.botCombo <= 1) {
+            return sprintResetDelay;
+        } else {
+            switch (this.comboMethod) {
+                case UPPERCUT:
+                    return 0;
+                default:
+                    return sprintResetDelay; // 1
             }
         }
     }
