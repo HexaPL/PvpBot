@@ -23,6 +23,7 @@ public class Target {
 
     private BoundingBox boundingBox;
     private Location headLocation;
+    private Location location;
     private HashMap<Integer, Location> locationCache;
     private HashMap<Integer, Vector> lookDirectionCache;
     private HashMap<Integer, Vector> motionCache;
@@ -50,6 +51,7 @@ public class Target {
         this.blockSpeed = 0;
         this.boundingBox = BoundingBoxUtils.getBoundingBox(player);
         this.headLocation = this.player.getEyeLocation();
+        this.location = this.player.getLocation();
         this.ticksSinceJump = 0;
         this.initCaches();
     }
@@ -59,6 +61,7 @@ public class Target {
         this.updatePing();
         this.boundingBox = this.calculateDelayedBoundingBox();
         this.headLocation = this.calculateDelayedHeadLocation();
+        this.location = new Location(player.getWorld(), headLocation.getX(), headLocation.getY() - player.getEyeHeight(), headLocation.getZ());
         this.lookDirection = this.calculateDelayedLookDirection();
         this.updateCache();
         this.updateMotion();
@@ -203,6 +206,10 @@ public class Target {
 
     public Location getHeadLocation() {
         return this.headLocation;
+    }
+
+    public Location getLocation() {
+        return this.location;
     }
 
     public Vector getLookDirection() {

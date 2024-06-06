@@ -109,7 +109,7 @@ public class SwordAi implements Ai {
 
         this.updateSequences();
 
-        //this.tickTest();
+        this.tickTest();
 
         this.hitSequence.tick();
         this.strafeSequence.tick();
@@ -174,11 +174,12 @@ public class SwordAi implements Ai {
         // Check for first-hit
         boolean startFirstHit = false;
         if (!firstHit && (this.hitSequence.step == 1 || this.hitSequence.finished)) {
+            //this.selectFirstHitMethod();
             if (this.firstHitMethod == NORMAL_HIT && this.getPingDistance() > 5 ||
                 this.firstHitMethod == HIT_SELECT && this.getPingDistance() > 5 ||
                 this.firstHitMethod == BAIT && this.getPingDistance() > 6 ||
                 this.firstHitMethod == JUMP_CRIT && this.shouldJumpCrit() ||
-                this.firstHitMethod == CRIT_DEFLECTION && this.getPingDistance() > 6
+                this.firstHitMethod == CRIT_DEFLECTION && this.getPingDistance() > 9
             ) {
                 startFirstHit = true;
             }
@@ -229,7 +230,7 @@ public class SwordAi implements Ai {
     public void updateFirstHitSequence() {
         switch (this.firstHitMethod) {
             case NORMAL_HIT:
-                this.firstHitSequence = sequences.normalHit;
+                this.firstHitSequence = bot.getProperties().getBoolean("counterCrits") ? sequences.normalHit_counterCrits : sequences.normalHit;
                 break;
             case HIT_SELECT:
                 this.firstHitSequence = sequences.hitSelect;
@@ -263,7 +264,7 @@ public class SwordAi implements Ai {
     public void updateSprintResetSequence() {
         switch (this.sprintResetMethod) {
             case W_TAP:
-                this.sprintResetSequence = sequences.wTap;
+                this.sprintResetSequence = bot.getProperties().getBoolean("counterRunning") ? sequences.wTap_counterRunning : sequences.wTap;
                 break;
             case S_TAP:
                 this.sprintResetSequence = sequences.sTap;
@@ -296,10 +297,10 @@ public class SwordAi implements Ai {
     public void attack(Player player) {
 
         if (PvpBotPlugin.debug) {
-            double motY = MathHelper.roundTo(target.realMot.getY(), 3);
             ticks = 0;
-            //Bukkit.broadcastMessage("[DEBUG] Bot hit: reach " + MathHelper.roundTo((float) getPingDistance(), 3) + ", motY: " + motY + ", " + timeS);
-            Bukkit.broadcastMessage("[DEBUG] Bot hit: reach " + MathHelper.roundTo((float) getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (0)");
+            double motY = MathHelper.roundTo(target.getMotion().getY(), 3);
+            Bukkit.broadcastMessage("[DEBUG] Bot hit: D " + MathHelper.roundTo((float) getPingDistance(), 3) + ", tMotY: " + motY + ", tMotTB: " + MathHelper.roundTo(target.blockSpeedTowardsBot, 3) + ", "  + LogUtils.getTimeString());
+            //Bukkit.broadcastMessage("[DEBUG] Bot hit: reach " + MathHelper.roundTo((float) getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (0)");
         }
 
         // Cache initial sprint state to restore it later
@@ -479,6 +480,11 @@ public class SwordAi implements Ai {
         this.setComboMethod(ComboMethod.values()[MathHelper.random(0, ComboMethod.values().length - 1)]);
     }
 
+    public void selectFirstHitMethod() {
+        HitMethod[] methods = {NORMAL_HIT, BAIT};
+        this.setFirstHitMethod(methods[MathHelper.random(0, methods.length - 1)]);
+    }
+
     protected void doAttack(SwordAi.HitType hitType) {
         if (hitType == CRITICAL_HIT) {
             bot.setFallDistance(1.0F);
@@ -516,6 +522,8 @@ public class SwordAi implements Ai {
         properties.set("ping", 0, Integer.class);
         properties.set("jumpReset", false, Boolean.class);
         properties.set("randomComboMethod", false, Boolean.class);
+        properties.set("counterRunning", false, Boolean.class); // Experimental
+        properties.set("counterCrits", false, Boolean.class); // Experimental
         //properties.set("strafe", false, Boolean.class);
     }
 

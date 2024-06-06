@@ -43,6 +43,9 @@ public abstract class Sequence {
             this.keepStep = false;
         } else {
             this.step++;
+            if (this.timer != null) {
+                this.timer.stop();
+            }
         }
         if (this.step > this.totalSteps) {
             this.finished = true;
@@ -57,6 +60,9 @@ public abstract class Sequence {
     public void stop() {
         if (this.subSequence != null && !this.subSequence.finished) {
             this.subSequence.stop();
+        }
+        if (this.hasTimer()) {
+            this.stopTimer();
         }
         this.onStop();
         this.finished = true;
@@ -118,22 +124,21 @@ public abstract class Sequence {
         return false;
     }
 
-    // TODO - fix it...
-    /*
     public boolean waitUntil(Condition condition, int expireIn) {
         return waitUntil(condition, expireIn, SequenceBlock.empty());
     }
 
     public boolean waitUntil(Condition condition, int expireIn, SequenceBlock onExpire) {
-        if (wait(expireIn)) {
-            onExpire.execute();
-            return true;
-        } else if (waitUntil(condition)) {
+        if (waitUntil(condition)) {
             this.stopTimer();
             return true;
         }
+        if (this.wait(expireIn)) {
+            this.keepStep = false;
+            return true;
+        }
         return false;
-    }*/
+    }
 
     public void tickSubsequence(Sequence subSequence) {
         if (this.subSequence != subSequence) {
@@ -147,7 +152,6 @@ public abstract class Sequence {
         this.subSequence.tick();
         if (this.subSequence.finished) {
             this.subSequence = null;
-            this.nextStep();
             return;
         }
 

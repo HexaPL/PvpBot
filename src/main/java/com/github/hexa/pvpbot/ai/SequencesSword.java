@@ -2,8 +2,6 @@ package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.util.LogUtils;
 import com.github.hexa.pvpbot.util.MathHelper;
-import com.github.hexa.pvpbot.util.VectorUtils;
-import com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot;
 import org.bukkit.Bukkit;
 
 import static com.github.hexa.pvpbot.ai.ControllableBot.MoveDirection.*;
@@ -13,6 +11,8 @@ public class SequencesSword extends SwordAi {
 
     private final SwordAi ai;
     private final ControllableBot bot;
+
+    protected boolean hitWhileFalling = false;
 
     public SequencesSword(SwordAi ai) {
         this.ai = ai;
@@ -42,7 +42,78 @@ public class SequencesSword extends SwordAi {
         }
     };
 
-    public final Sequence normalHit_withUppercut = new Sequence(3) {
+    public final Sequence normalHit_counterCrits = new Sequence(3) {
+
+        private boolean shouldDodgeJump;
+
+        @Override
+        public void onStart() {
+            this.shouldDodgeJump = false;
+            ai.setMoveForward(FORWARD);
+        }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    if (ai.target.ticksSinceJump == 0) {
+                        double jumpDistance = ai.getPingDistance();
+                        //Bukkit.broadcastMessage("JUMP distance: " + MathHelper.roundTo(jumpDistance, 3) + ", " + LogUtils.getTimeString());
+                        if (jumpDistance > 6.4 && jumpDistance < 7 && ai.target.blockSpeedTowardsBot > 0) {
+                            this.shouldDodgeJump = true;
+                            //Bukkit.broadcastMessage("Dodging jump");
+                        }
+                    }
+                    if (this.shouldDodgeJump) {
+                        this.tickSubsequence(dodgeJump);
+                        if (this.subSequence == null) {
+                            this.shouldDodgeJump = false;
+                        } else {
+                            break;
+                        }
+                    }
+                    this.waitUntil(ai::canAttack);
+                    break;
+                case 2:
+                    hitWhileFalling = !ai.target.getPlayer().isOnGround();
+                    ai.doAttack();
+                    this.nextStep();
+                    break;
+                case 3:
+                    if (hitWhileFalling) {
+                        this.tickSubsequence(sTap);
+                    } else {
+                        this.tickSubsequence(ai.sprintResetSequence);
+                    }
+                    break;
+            }
+        }
+
+    };
+
+    private final Sequence dodgeJump = new Sequence(3) {
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    ai.setMoveForward(BACKWARD);
+                    break;
+                case 2:
+                    this.wait(1);
+                    break;
+                case 3:
+                    ai.setMoveForward(FORWARD);
+                    break;
+            }
+        }
+
+        @Override
+        public void onStop() {
+            ai.setMoveForward(FORWARD);
+        }
+    };
+
+    public final Sequence reachCut = new Sequence(3) {
         @Override
         public void onStart() {
             ai.setMoveForward(FORWARD);
@@ -54,7 +125,7 @@ public class SequencesSword extends SwordAi {
                 case 1:
                     this.waitUntil(ai::canAttack);
                     if (ai.getPingDistance() - 3.0F < (2 * ai.blockSpeed + 0.2F) && ai.getPingDistance() - 3.0F > (2 * ai.blockSpeed) && bot.isOnGround()) {
-                        //Bukkit.broadcastMessage("Uppercut: " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString());
+                        //Bukkit.broadcastMessage("reachCut: " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString());
                         bot.jump();
                     }
                     break;
@@ -150,7 +221,7 @@ public class SequencesSword extends SwordAi {
         public void onTick() {
             switch (step) {
                 case 1:
-                    if (this.waitUntil(() -> ai.target.ticksSinceJump == 0)) Bukkit.broadcastMessage("JUMP distance: " + MathHelper.roundTo(ai.getPingDistance(), 3));
+                    if (this.waitUntil(() -> ai.target.ticksSinceJump == 0)) Bukkit.broadcastMessage("JUMP distance: " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString());
                     break;
                 case 2:
                     this.waitUntil(() -> ai.target.getPlayer().isOnGround() && ai.canAttack());
@@ -178,6 +249,7 @@ public class SequencesSword extends SwordAi {
             switch (step) {
                 case 1:
                     this.tickSubsequence(ai.sequences.jump);
+                    if (this.subSequence == null) this.nextStep();
                     break;
                 case 2:
                     this.wait(7); // Time for optimal crit
@@ -191,6 +263,7 @@ public class SequencesSword extends SwordAi {
                     break;
                 case 4:
                     this.tickSubsequence(crit);
+                    if (this.subSequence == null) this.nextStep();
                     break;
                 case 5:
                     this.wait(2);
@@ -285,7 +358,11 @@ public class SequencesSword extends SwordAi {
                     ai.setMoveForward(0);
                     break;
                 case 3:
-                    this.wait(ai.getWTapLength());
+                    if (ai.ticksSinceDamage == 2) {
+                        this.stop();
+                        break;
+                    }
+                    this.waitUntil(() -> ai.getPingDistance() > 3.5, 8);
                     break;
                 case 4:
                     ai.setMoveForward(FORWARD);
@@ -299,7 +376,7 @@ public class SequencesSword extends SwordAi {
         }
     };
 
-    public final Sequence wTap_counterRunning = new Sequence(3) {
+    public final Sequence wTap_counterRunning = new Sequence(4) {
 
         private int tick = 0;
         private boolean running = false;
@@ -308,28 +385,36 @@ public class SequencesSword extends SwordAi {
         public void onTick() {
             switch (step) {
                 case 1:
-                    //Bukkit.broadcastMessage("Start sprint reset" + ", Y: " + MathHelper.roundTo((float) ai.target.motion.getY(), 3) + ", motTar: " + MathHelper.roundTo(ai.getTarget().motionTowardsBot, 3));
+                    //Bukkit.broadcastMessage("Start sprint reset" + ", Y: " + MathHelper.roundTo((float) ai.target.motion.getY(), 3) + ", motTar: " + MathHelper.roundTo(ai.getTarget().blockSpeedTowardsBot, 3) + ", lY: " + MathHelper.roundTo(ai.target.getLocation().getY(), 3));
                     tick = 1;
                     running = false;
                     ai.setMoveForward(0);
                     break;
                 case 2:
-                    //Bukkit.broadcastMessage("Tick " + tick + ", distance: " + MathHelper.roundTo((float) ai.getPingDistance(), 3) + ", Y: " + MathHelper.roundTo((float) ai.target.motion.getY(), 3) + ", motTar: " + MathHelper.roundTo(ai.getTarget().motionTowardsBot, 3));
-                    if (ai.target.motion.getY() == 0 && ai.getTarget().motionTowardsBot < 0.05) {
-                        //Bukkit.broadcastMessage("Running detected!");
-                        //Bukkit.broadcastMessage("Stop sprint reset");
+                    //Bukkit.broadcastMessage("Tick " + tick + ", D: " + MathHelper.roundTo((float) ai.getPingDistance(), 3) + ", motY: " + MathHelper.roundTo((float) ai.target.motion.getY(), 3) + ", motTar: " + MathHelper.roundTo(ai.getTarget().blockSpeedTowardsBot, 3) + ", lY: " + MathHelper.roundTo(ai.target.getLocation().getY(), 3));
+                    if (ai.ticksSinceDamage == 2) {
+                        //Bukkit.broadcastMessage("Hit while sprint resetting!");
+                        this.stop();
+                        break;
+                    }
+                    if (ai.botCombo >= 2 && ai.target.motion.getY() == 0 && ai.getTarget().blockSpeedTowardsBot < 0) {
+                        //Bukkit.broadcastMessage("Running detected! - Holding S before hit");
                         ai.setMoveForward(FORWARD);
                         running = true;
                         this.stopTimer();
                         break;
                     }
-                    this.wait(ai.getWTapLength());
+                    this.waitUntil(() -> ai.getPingDistance() > 3.5, 8);
                     tick++;
                     break;
                 case 3:
-                    //Bukkit.broadcastMessage("Stop sprint reset");
-                    if (running) ai.bot.jump();
+                    //Bukkit.broadcastMessage("Stop sprint reset" + ", tMot: " + MathHelper.roundTo(ai.getTarget().blockSpeedTowardsBot, 3));
                     ai.setMoveForward(FORWARD);
+                    break;
+                case 4:
+                    if (running) {
+                        ai.bot.jump();
+                    }
                     break;
             }
         }
@@ -355,7 +440,8 @@ public class SequencesSword extends SwordAi {
                     ai.setMoveForward(BACKWARD);
                     break;
                 case 4:
-                    this.wait(ai.getSTapLength());
+                    int len = hitWhileFalling ? 4 : ai.getSTapLength();
+                    this.wait(len);
                     break;
                 case 5:
                     ai.setMoveForward(0);
@@ -451,8 +537,6 @@ public class SequencesSword extends SwordAi {
             }
         }
     };
-
-    public final Sequence straightlineCombo = Sequence.empty();
 
     public final Sequence noStrafe = new Sequence(1) {
         @Override
