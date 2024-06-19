@@ -200,6 +200,10 @@ public class Target {
         }
     }
 
+    public boolean hasJumpVelocity() {
+        return MathHelper.roundTo(motion.getY(), 3) == 0.229;
+    }
+
     public BoundingBox getBoundingBox() {
         return this.boundingBox;
     }

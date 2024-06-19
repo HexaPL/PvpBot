@@ -5,10 +5,8 @@ import com.github.hexa.pvpbot.ai.Ai;
 import com.github.hexa.pvpbot.ai.ControllableBot;
 import com.github.hexa.pvpbot.ai.SwordAi;
 import com.github.hexa.pvpbot.skins.Skin;
-import com.github.hexa.pvpbot.util.BoundingBoxUtils;
+import com.github.hexa.pvpbot.util.*;
 import com.github.hexa.pvpbot.util.MathHelper;
-import com.github.hexa.pvpbot.util.PropertyMap;
-import com.github.hexa.pvpbot.util.RotationUtils;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
@@ -128,7 +126,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
         if (damaged && velocityChanged) {
             this.velocityChanged = false;
-            Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> velocityChanged = true);
+            //Bukkit.getScheduler().runTask(PvpBotPlugin.getInstance(), () -> velocityChanged = true);
             //this.hasPendingKnockback = true;
             this.getAI().onDamageEntity(new NmsDamageSource(damagesource));
         }

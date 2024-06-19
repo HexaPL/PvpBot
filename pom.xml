@@ -19,16 +19,11 @@
                     </goals>
                 </execution>
             </executions>
-        </plugin>
+        </plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><configuration><source>14</source><target>14</target></configuration></plugin>
     </plugins></build>
     <groupId>com.github.hexa</groupId>
     <artifactId>PvpBot</artifactId>
     <version>1.0</version>
-
-    <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-    </properties>
 
     <repositories>
         <repository>

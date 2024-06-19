@@ -168,6 +168,7 @@ public abstract class Sequence {
     public void stopSubsequence() {
         if (this.subSequence != null) {
             this.subSequence.stop();
+            this.subSequence = null;
         }
     }
 

@@ -376,6 +376,8 @@ public class SequencesSword extends SwordAi {
         }
     };
 
+
+
     public final Sequence wTap_counterRunning = new Sequence(4) {
 
         private int tick = 0;
@@ -397,10 +399,9 @@ public class SequencesSword extends SwordAi {
                         this.stop();
                         break;
                     }
-                    if (ai.botCombo >= 2 && ai.target.motion.getY() == 0 && ai.getTarget().blockSpeedTowardsBot < 0) {
-                        //Bukkit.broadcastMessage("Running detected! - Holding S before hit");
-                        ai.setMoveForward(FORWARD);
+                    if (ai.isTargetComboRunning()) {
                         running = true;
+                        ai.setMoveForward(FORWARD);
                         this.stopTimer();
                         break;
                     }
@@ -458,11 +459,9 @@ public class SequencesSword extends SwordAi {
         }
     };
 
-    public final Sequence upperCut = new Sequence(9) {
-        private int tick = 0;
+    public final Sequence upperCut = new Sequence(5) {
         @Override
         public void onStart() {
-            tick = 0;
             ai.setMoveForward(FORWARD);
         }
 
@@ -471,55 +470,101 @@ public class SequencesSword extends SwordAi {
             switch (step) {
                 case 1:
                     this.waitUntil(() -> bot.isOnGround() && ai.getPingDistance() - 2 * ai.blockSpeed <= 3.0F); // TODO - use opponent motion too
-                    //Bukkit.broadcastMessage("Wait jump: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString());
                     break;
                 case 2:
                     bot.jump();
-                    tick = 0;
-                    //Bukkit.broadcastMessage("Jump: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
                     break;
                 case 3:
-                    tick++;
                     this.waitUntil(ai::canAttack);
-                    //Bukkit.broadcastMessage("Wait atk: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + "), " + bot.getAttackCooldown());
                     break;
                 case 4:
                     ai.doAttack();
                     this.nextStep();
-                    //Bukkit.broadcastMessage("ATK: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
                     break;
                 case 5:
-                    ai.setMoveForward(0);
-                    //Bukkit.broadcastMessage("StopF: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
+                    this.tickSubsequence(sTap);
                     break;
-                case 6:
-                    tick++;
-                    ai.setMoveForward(BACKWARD);
-                    //Bukkit.broadcastMessage("StartB: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
-                    break;
-                case 7:
-                    tick++;
-                    this.wait(ai.getSTapLength());
-                    break;
-                case 8:
-                    ai.setMoveForward(0);
-                    //Bukkit.broadcastMessage("StopB: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
-                    break;
-                case 9:
-                    tick++;
-                    ai.setMoveForward(FORWARD);
-                    //Bukkit.broadcastMessage("StartF: D " + MathHelper.roundTo(ai.getPingDistance(), 3) + ", " + LogUtils.getTimeString() + " (" + tick + ")");
-                    break;
-
             }
         }
     };
 
-    public final Sequence upperCut_old = new Sequence(3) {
+    // TODO - more calculations...
+    public final Sequence upperCut_counterRunning = new Sequence(7) {
+        private boolean running;
+
         @Override
         public void onStart() {
+            running = false;
             ai.setMoveForward(FORWARD);
         }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    this.waitUntil(() -> bot.isOnGround() && ai.getPingDistance() - 2 * ai.blockSpeed <= 3.0F); // TODO - use opponent motion too
+                    break;
+                case 2:
+                    bot.jump();
+                    break;
+                case 3:
+                    this.waitUntil(ai::canAttack);
+                    break;
+                case 4:
+                    ai.doAttack();
+                    this.nextStep();
+                    break;
+                case 5:
+                    Bukkit.broadcastMessage("Tick, D: " + MathHelper.roundTo((float) ai.getPingDistance(), 3) + ", motY: " + MathHelper.roundTo((float) ai.target.motion.getY(), 3) + ", motTar: " + MathHelper.roundTo(ai.getTarget().blockSpeedTowardsBot, 3) + ", lY: " + MathHelper.roundTo(ai.target.getLocation().getY(), 3));
+                    if (ai.isTargetComboRunning()) {
+                        running = true;
+                        this.stopSubsequence();
+                        break;
+                    }
+                    this.tickSubsequence(sTap);
+                    if (this.subSequence == null && !running) {
+                        this.stop();
+                    }
+                    break;
+                case 6:
+                    this.waitUntil(bot::canJump);
+                    break;
+                case 7:
+                    bot.jump();
+                    break;
+            }
+        }
+    };
+
+    public final Sequence hop = new Sequence(6) {
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    this.waitUntil(ai::canAttack);
+                    break;
+                case 2:
+                    ai.doAttack();
+                    break;
+                case 3:
+                    ai.setMoveForward(0);
+                    break;
+                case 4:
+                    bot.jump();
+                    break;
+                case 5:
+                    this.wait(0);
+                    break;
+                case 6:
+                    ai.setMoveForward(FORWARD);
+                    break;
+            }
+        }
+    };
+
+    /*
+    public final Sequence hop_counterRunning = new Sequence(8) {
+        private boolean running = false;
 
         @Override
         public void onTick() {
@@ -528,15 +573,38 @@ public class SequencesSword extends SwordAi {
                     this.waitUntil(ai::canAttack);
                     break;
                 case 2:
-                    ai.bot.jump();
                     ai.doAttack();
                     break;
                 case 3:
-                    this.tickSubsequence(ai.sprintResetSequence);
+                    if (ai.isTargetComboRunning()) {
+                        running = true;
+                        this.stopTimer();
+                        break;
+                    }
+                    this.wait(3);
+                    break;
+                case 4:
+                    if (running) {
+                        this.nextStep();
+                    } else {
+                        ai.setMoveForward(0);
+                    }
+                    break;
+                case 5:
+                    this.wait(0);
+                    break;
+                case 6:
+                    bot.jump();
+                    break;
+                case 7:
+                    this.wait(0);
+                    break;
+                case 8:
+                    ai.setMoveForward(FORWARD);
                     break;
             }
         }
-    };
+    };*/
 
     public final Sequence noStrafe = new Sequence(1) {
         @Override

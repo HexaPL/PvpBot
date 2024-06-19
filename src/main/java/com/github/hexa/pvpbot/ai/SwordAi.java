@@ -13,6 +13,7 @@ import org.bukkit.util.Vector;
 
 import static com.github.hexa.pvpbot.ai.SwordAi.ComboMethod.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.HitMethod.*;
+import static com.github.hexa.pvpbot.ai.SwordAi.HitMethod.HOP;
 import static com.github.hexa.pvpbot.ai.SwordAi.HitMethod.UPPERCUT;
 import static com.github.hexa.pvpbot.ai.SwordAi.HitType.*;
 import static com.github.hexa.pvpbot.ai.SwordAi.SprintResetMethod.*;
@@ -101,6 +102,17 @@ public class SwordAi implements Ai {
         this.doSTap = false;
     }
 
+    private void createProperties() {
+        this.properties = bot.getProperties();
+        properties.set("reach", 3.0F, Float.class);
+        properties.set("ping", 0, Integer.class);
+        properties.set("jumpReset", false, Boolean.class);
+        properties.set("randomComboMethod", false, Boolean.class);
+        properties.set("counterRunning", false, Boolean.class); // Experimental
+        properties.set("counterCrits", false, Boolean.class); // Experimental
+        //properties.set("strafe", false, Boolean.class);
+    }
+
     @Override
     public void tick() {
         this.updateTarget();
@@ -123,6 +135,11 @@ public class SwordAi implements Ai {
     }
 
     private void tickTest() {
+        if (PvpBotPlugin.debug) {
+            if (this.blockSpeed == 0 && bot.getEyeLocation().distance(lastLoc) > 0) {
+                //Bukkit.broadcastMessage("Bot velocity (server): " + MathHelper.roundTo(bot.getEyeLocation().distance(lastLoc), 3) + ", " + LogUtils.getTimeString());
+            }
+        }
         if (getPingDistance() < 6.0F) {
             if (target.getPlayer().getItemInHand().getType() != Material.GOLD_INGOT) return;
             //double locationPing = MathHelper.roundTo(target.getPlayer().getEyeLocation().toVector().getZ(), 3);
@@ -212,15 +229,9 @@ public class SwordAi implements Ai {
 
     public void updateStrafeSequence() {
         switch (this.strafeMethod) {
-            case NO_STRAFE:
-                this.strafeSequence = sequences.noStrafe;
-                return;
-            case CIRCLE:
-                this.strafeSequence = sequences.circleStrafe;
-                return;
-            case SWITCH:
-                this.strafeSequence = sequences.switchStrafe;
-                return;
+            case NO_STRAFE -> this.strafeSequence = sequences.noStrafe;
+            case CIRCLE -> this.strafeSequence = sequences.circleStrafe;
+            case SWITCH -> this.strafeSequence = sequences.switchStrafe;
             //case CRIT_SPAM: // TODO - crit spam
             //    this.comboSequence = sequences.critSpam;
             //    return;
@@ -229,46 +240,31 @@ public class SwordAi implements Ai {
 
     public void updateFirstHitSequence() {
         switch (this.firstHitMethod) {
-            case NORMAL_HIT:
-                this.firstHitSequence = bot.getProperties().getBoolean("counterCrits") ? sequences.normalHit_counterCrits : sequences.normalHit;
-                break;
-            case HIT_SELECT:
-                this.firstHitSequence = sequences.hitSelect;
-                break;
-            case BAIT:
-                this.firstHitSequence = sequences.bait;
-                break;
-            case JUMP_CRIT:
-                this.firstHitSequence = sequences.jumpAndCrit;
-                break;
-            case CRIT_DEFLECTION:
-                this.firstHitSequence = sequences.critDeflection;
-                break;
+            case NORMAL_HIT -> this.firstHitSequence = bot.getProperties().getBoolean("counterCrits") ?
+                    sequences.normalHit_counterCrits :
+                    sequences.normalHit;
+            case HIT_SELECT -> this.firstHitSequence = sequences.hitSelect;
+            case BAIT -> this.firstHitSequence = sequences.bait;
+            case JUMP_CRIT -> this.firstHitSequence = sequences.jumpAndCrit;
+            case CRIT_DEFLECTION -> this.firstHitSequence = sequences.critDeflection;
         }
     }
 
     public void updateComboHitSequence() {
         switch (this.comboHitMethod) {
-            case NORMAL_HIT:
-                this.comboHitSequence = sequences.normalHit;
-                break;
-            case UPPERCUT:
-                this.comboHitSequence = sequences.upperCut;
-                break;
-            case WASD_HIT:
-                this.comboHitSequence = sequences.wasdHit;
-                break;
+            case NORMAL_HIT -> this.comboHitSequence = sequences.normalHit;
+            case UPPERCUT -> this.comboHitSequence = sequences.upperCut;
+            case WASD_HIT -> this.comboHitSequence = sequences.wasdHit;
+            case HOP -> this.comboHitSequence = sequences.hop;
         }
     }
 
     public void updateSprintResetSequence() {
         switch (this.sprintResetMethod) {
-            case W_TAP:
-                this.sprintResetSequence = bot.getProperties().getBoolean("counterRunning") ? sequences.wTap_counterRunning : sequences.wTap;
-                break;
-            case S_TAP:
-                this.sprintResetSequence = sequences.sTap;
-                break;
+            case W_TAP -> this.sprintResetSequence = bot.getProperties().getBoolean("counterRunning") ?
+                    sequences.wTap_counterRunning :
+                    sequences.wTap;
+            case S_TAP -> this.sprintResetSequence = sequences.sTap;
         }
     }
 
@@ -342,6 +338,20 @@ public class SwordAi implements Ai {
 
     public boolean shouldJumpCrit() {
         return this.getPingDistance() > 7 && this.getPingDistance() < 7.5; // TODO - acutal calculations
+    }
+
+    public boolean isTargetComboRunning() {
+        if (botCombo >= 2 && target.motion.getY() == 0 && getTarget().blockSpeedTowardsBot <= 0) { // Releasing W / holding S while on ground
+            //Bukkit.broadcastMessage("Running detected! - Holding S before hit");
+            return true;
+        } else if (botCombo >= 2 && target.hasJumpVelocity() && ( // Pressing S and SPACE to get launched backwards
+                getTarget().blockSpeedTowardsBot < -0.5 || // Filter jump resets (block speed = -0.4)
+                getTarget().blockSpeedTowardsBot > -0.25 // Detect S and SPACE before getting hit (block speed ~ -0.2)
+        )) {
+            //Bukkit.broadcastMessage("Running detected! - Holding S and SPACE");
+            return true;
+        }
+        return false;
     }
 
     // Called whenever bot get damaged
@@ -516,18 +526,6 @@ public class SwordAi implements Ai {
         return this.properties;
     }
 
-    private void createProperties() {
-        properties = bot.getProperties();
-        properties.set("reach", 3.0F, Float.class);
-        properties.set("ping", 0, Integer.class);
-        properties.set("jumpReset", false, Boolean.class);
-        properties.set("randomComboMethod", false, Boolean.class);
-        properties.set("counterRunning", false, Boolean.class); // Experimental
-        properties.set("counterCrits", false, Boolean.class); // Experimental
-        //properties.set("strafe", false, Boolean.class);
-    }
-
-
     public double getPingDistance() {
         return BoundingBoxUtils.distanceTo(bot.getEyeLocation(), this.getTarget().getBoundingBox());
     }
@@ -611,6 +609,10 @@ public class SwordAi implements Ai {
                 this.setComboHitMethod(WASD_HIT);
                 this.setStrafeMethod(NO_STRAFE); // Strafe movement is contained in WASD_HIT
                 return;
+            case HOP:
+                this.setComboHitMethod(HOP);
+                this.setStrafeMethod(NO_STRAFE);
+                return;
         }
     }
 
@@ -627,11 +629,11 @@ public class SwordAi implements Ai {
     }
 
     public enum HitMethod {
-        NORMAL_HIT, HIT_SELECT, BAIT, CRIT_DEFLECTION, JUMP_CRIT, UPPERCUT, WASD_HIT
+        NORMAL_HIT, HIT_SELECT, BAIT, CRIT_DEFLECTION, JUMP_CRIT, UPPERCUT, WASD_HIT, HOP
     }
 
     public enum ComboMethod {
-        STRAIGHT_LINE, CIRCLE_COMBO, SWITCH_COMBO, UPPERCUT, WASD_SPAM
+        STRAIGHT_LINE, CIRCLE_COMBO, SWITCH_COMBO, UPPERCUT, WASD_SPAM, HOP
     }
 
 }
