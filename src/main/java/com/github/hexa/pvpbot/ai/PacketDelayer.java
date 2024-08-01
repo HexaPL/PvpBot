@@ -2,6 +2,7 @@ package com.github.hexa.pvpbot.ai;
 
 import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.events.PacketEvent;
+import com.github.hexa.pvpbot.util.LogUtils;
 import com.github.hexa.pvpbot.v1_16_R3.EntityPlayerBot;
 import com.github.hexa.pvpbot.v1_16_R3.PacketListener;
 import net.minecraft.server.v1_16_R3.*;
@@ -30,7 +31,7 @@ public class PacketDelayer implements Listener {
 
     public PacketDelayer(Player player) {
         this.player = player;
-        this.delay = 100;
+        this.delay = 50;
         this.incomingPacketQueue = new HashMap<>();
         this.outgoingPacketQueue = new HashMap<>();
         this.delayedPackets = new HashSet<>();
@@ -111,6 +112,17 @@ public class PacketDelayer implements Listener {
             if (this.direction == PacketDirection.INCOMING) {
                 return;
             }
+
+            /*
+            if (event.getPlayer().isSneaking() && !shouldBlockPacket(event.getPacket())) {
+                Bukkit.broadcastMessage("Packet to " + event.getPlayer().getName() + ": " + event.getPacket().getClass().getSimpleName() + ", " + LogUtils.getTimeString());
+                if (event.getPacket() instanceof PacketPlayOutEntityTeleport) {
+                    event.setCancelled(true);
+                    Bukkit.broadcastMessage("Cancel teleport packet");
+                }
+            }*/
+
+
             if (delay == 0) {
                 return;
             }
@@ -174,12 +186,13 @@ public class PacketDelayer implements Listener {
     private boolean shouldDelayPacket(Packet<?> packet) {
         String packetName = packet.getClass().getSimpleName();
         switch (packetName) {
-            case "PacketPlayInPosition":
-            case "PacketPlayInLook":
-            case "PacketPlayInPositionLook":
+            //case "PacketPlayInPosition":
+            //case "PacketPlayInLook":
+            //case "PacketPlayInPositionLook":
             case "PacketPlayOutEntityLook":
             case "PacketPlayOutRelEntityMove":
             case "PacketPlayOutRelEntityMoveLook":
+            case "PacketPlayOutEntityTeleport":
                 return true;
             //case "PacketPlayOutEntityVelocity":
             //    return true;
@@ -191,9 +204,9 @@ public class PacketDelayer implements Listener {
     private boolean shouldBlockPacket(Packet<?> packet) {
         String packetName = packet.getClass().getSimpleName();
         switch (packetName) {
-            case "PacketPlayOutEntityLook":
-            case "PacketPlayOutRelEntityMove":
-            case "PacketPlayOutRelEntityMoveLook":
+            case "PacketPlayOutChat":
+            case "PacketPlayOutLightUpdate":
+            case "PacketPlayOutMapChunk":
                 return true;
             default:
                 return false;

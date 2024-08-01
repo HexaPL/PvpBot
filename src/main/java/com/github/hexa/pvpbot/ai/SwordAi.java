@@ -384,7 +384,7 @@ public class SwordAi implements Ai {
 
     public int getSTapLength() {
         if (this.botCombo <= 1) {
-            return 4;
+            return sTapLength;
         } else {
             switch (this.comboMethod) {
                 case SWITCH_COMBO:
