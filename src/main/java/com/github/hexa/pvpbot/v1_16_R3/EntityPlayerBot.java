@@ -1,9 +1,10 @@
 package com.github.hexa.pvpbot.v1_16_R3;
 
+import com.github.hexa.pvpbot.ai.gamemode.GameMode;
 import com.github.hexa.pvpbot.PvpBotPlugin;
 import com.github.hexa.pvpbot.ai.Ai;
-import com.github.hexa.pvpbot.ai.ControllableBot;
-import com.github.hexa.pvpbot.ai.SwordAi;
+import com.github.hexa.pvpbot.ControllableBot;
+import com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi;
 import com.github.hexa.pvpbot.skins.Skin;
 import com.github.hexa.pvpbot.util.*;
 import com.github.hexa.pvpbot.util.MathHelper;
@@ -27,6 +28,7 @@ import java.util.List;
 public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
 
     public String name;
+    private GameMode gameMode;
     public EntityPlayer owner;
     private Ai ai;
     private Skin skin;
@@ -48,8 +50,6 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         this.name = name;
         this.owner = owner;
         this.properties = new PropertyMap(this);
-        // Initialize AI
-        this.ai = new SwordAi(this);
         // Initialize variables
         this.init();
     }
@@ -63,7 +63,7 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
         this.prevPitch = this.pitch;
 
         // Tick AI
-        if (this.ai.isEnabled()) {
+        if (this.ai != null && this.ai.isEnabled()) {
             this.ai.tick();
         }
 
@@ -214,6 +214,16 @@ public class EntityPlayerBot extends EntityPlayer implements ControllableBot {
     @Override
     public boolean canCrit() {
         return /*!this.isSprinting() && */!this.onGround && this.getMotion().getY() < 0;
+    }
+
+    @Override
+    public void setGameMode(GameMode gameMode) {
+        this.gameMode = gameMode;
+    }
+
+    @Override
+    public GameMode getGameMode() {
+        return this.gameMode;
     }
 
     @Override

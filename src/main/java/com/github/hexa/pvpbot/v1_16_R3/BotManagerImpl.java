@@ -1,7 +1,8 @@
 package com.github.hexa.pvpbot.v1_16_R3;
 
-import com.github.hexa.pvpbot.Bot;
-import com.github.hexa.pvpbot.PvpBotPlugin;
+import com.github.hexa.pvpbot.*;
+import com.github.hexa.pvpbot.ai.gamemode.GameMode;
+import com.github.hexa.pvpbot.ai.gamemode.GameModeManager;
 import com.github.hexa.pvpbot.skins.Skin;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.server.v1_16_R3.*;
@@ -11,20 +12,22 @@ import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_16_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_16_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.json.simple.parser.ParseException;
 
-import java.io.IOException;
-import java.util.Optional;
 import java.util.UUID;
 
-public class BotManager implements com.github.hexa.pvpbot.BotManager {
+public class BotManagerImpl extends AbstractBotManager {
 
     @Override
-    public Bot createBot(String name, World world, Location location, Player owner) {
+    public Bot createBot(String name, GameMode gameMode, Player owner) {
+        return createBot(name, gameMode, owner, owner.getLocation());
+    }
+
+    @Override
+    public Bot createBot(String name, GameMode gameMode, Player owner, Location location) {
 
         MinecraftServer nmsServer = ((CraftServer) Bukkit.getServer()).getServer();
+        World world = location.getWorld();
         WorldServer worldServer = ((CraftWorld) world).getHandle();
         GameProfile profile = new GameProfile(UUID.randomUUID(), name);
         PlayerInteractManager interactManager = new PlayerInteractManager(worldServer);
@@ -63,6 +66,7 @@ public class BotManager implements com.github.hexa.pvpbot.BotManager {
             }
         }, 3L);
 
+        GameModeManager.setGameMode(bot, gameMode);
         botUUIDs.put(bot.getUniqueID(), bot);
         bots.put(name, bot);
 
@@ -72,46 +76,14 @@ public class BotManager implements com.github.hexa.pvpbot.BotManager {
 
     @Override
     public void removeBot(Bot bot) {
-
-        EntityPlayerBot nmsBot = getBotHandle(bot);
+        EntityPlayerBot nmsBot = getNmsBot(bot);
         WorldServer worldServer = nmsBot.getWorldServer();
         worldServer.removePlayer(nmsBot);
         bots.remove(bot.getBotName());
-
+        botUUIDs.remove(((EntityPlayerBot) bot).getUniqueID());
     }
 
-    @Override
-    public boolean botExists(String name) {
-        return bots.containsKey(name);
-    }
-
-    @Override
-    public boolean botExists(UUID uuid) {
-        return botUUIDs.containsKey(uuid);
-    }
-
-    @Override
-    public Bot getBotByName(String name) {
-        if (!(bots.containsKey(name))) {
-            return null;
-        }
-        return bots.get(name);
-    }
-
-    @Override
-    public Bot getBotByUUID(UUID uuid) {
-        if (!(botUUIDs.containsKey(uuid))) {
-            return null;
-        }
-        return botUUIDs.get(uuid);
-    }
-
-    @Override
-    public boolean entityIsBot(Entity entity) {
-        return botExists(entity.getUniqueId());
-    }
-
-    public static EntityPlayerBot getBotHandle(Bot bot) {
+    public static EntityPlayerBot getNmsBot(Bot bot) {
         return (EntityPlayerBot) bot;
     }
 

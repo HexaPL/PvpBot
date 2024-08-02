@@ -1,4 +1,6 @@
-package com.github.hexa.pvpbot.ai;
+package com.github.hexa.pvpbot.ai.sequence;
+
+import com.github.hexa.pvpbot.ai.sequence.Sequence;
 
 public class Timer {
 

@@ -1,4 +1,4 @@
-package com.github.hexa.pvpbot.ai;
+package com.github.hexa.pvpbot.ai.sequence;
 
 public interface SequenceBlock {
 

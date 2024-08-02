@@ -1,17 +1,14 @@
 package com.github.hexa.pvpbot;
 
-import com.github.hexa.pvpbot.ai.PacketDelayer;
 import com.github.hexa.pvpbot.command.BotCommand;
-import org.bukkit.Bukkit;
+import com.github.hexa.pvpbot.v1_16_R3.BotManagerImpl;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class PvpBotPlugin extends JavaPlugin implements Listener {
     public static PvpBotPlugin instance;
-    public BotManager botManager;
+    public AbstractBotManager botManager;
     public static FileConfiguration CONFIG;
     public static boolean debug = false;
 
@@ -21,7 +18,7 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         this.getLogger().info("Registering BotManager for Craftbukkit version v1_16_R3");
         //this.getServer().getPluginManager().registerEvents(new PacketDelayer.PlayerJoinListener(), this);// TODO - ping system
-        this.botManager = new com.github.hexa.pvpbot.v1_16_R3.BotManager();
+        this.botManager = new BotManagerImpl();
         this.getCommand("bot").setExecutor(new BotCommand());
         this.saveDefaultConfig();
         this.reloadConfig();
@@ -44,7 +41,7 @@ public class PvpBotPlugin extends JavaPlugin implements Listener {
         saveConfig();
     }
 
-    public static BotManager getManager() {
+    public static AbstractBotManager getManager() {
         return instance.botManager;
     }
 

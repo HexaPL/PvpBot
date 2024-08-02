@@ -1,11 +1,13 @@
-package com.github.hexa.pvpbot.ai;
+package com.github.hexa.pvpbot.ai.gamemode.sword;
 
+import com.github.hexa.pvpbot.ControllableBot;
+import com.github.hexa.pvpbot.ai.sequence.Sequence;
 import com.github.hexa.pvpbot.util.LogUtils;
 import com.github.hexa.pvpbot.util.MathHelper;
 import org.bukkit.Bukkit;
 
-import static com.github.hexa.pvpbot.ai.ControllableBot.MoveDirection.*;
-import static com.github.hexa.pvpbot.ai.SwordAi.HitType.CRITICAL_HIT;
+import static com.github.hexa.pvpbot.ControllableBot.MoveDirection.*;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.HitType.CRITICAL_HIT;
 
 public class SequencesSword extends SwordAi {
 
@@ -441,6 +443,11 @@ public class SequencesSword extends SwordAi {
                     ai.setMoveForward(BACKWARD);
                     break;
                 case 4:
+                    if (ai.ticksSinceDamage == 2) { // TODO - check that number
+                        //Bukkit.broadcastMessage("Hit while sprint resetting!");
+                        this.stop();
+                        break;
+                    }
                     int len = hitWhileFalling ? 4 : ai.getSTapLength();
                     this.wait(len);
                     break;
@@ -456,6 +463,35 @@ public class SequencesSword extends SwordAi {
         @Override
         public void onStop() {
             ai.setMoveForward(FORWARD);
+        }
+    };
+
+    public final Sequence sTap_counterRunning = new Sequence(2) {
+        private boolean running = false;
+
+        @Override
+        public void onStart() {
+            running = false;
+        }
+
+        @Override
+        public void onTick() {
+            switch (step) {
+                case 1:
+                    if (ai.isTargetComboRunning()) {
+                        running = true;
+                        this.stopSubsequence();
+                        ai.setMoveForward(FORWARD);
+                        break;
+                    }
+                    this.tickSubsequence(sTap);
+                    break;
+                case 2:
+                    if (running) {
+                        ai.bot.jump();
+                    }
+                    break;
+            }
         }
     };
 

@@ -1,12 +1,11 @@
 package com.github.hexa.pvpbot;
 
-import com.github.hexa.pvpbot.ai.ControllableBot;
+import com.github.hexa.pvpbot.ai.gamemode.GameMode;
 import com.github.hexa.pvpbot.skins.Skin;
 import com.github.hexa.pvpbot.util.PropertyMap;
 import org.bukkit.entity.Player;
 
 import java.net.URL;
-import java.util.HashMap;
 
 public interface Bot {
 
@@ -15,6 +14,10 @@ public interface Bot {
     default public ControllableBot getControllable() {
         return (ControllableBot) this;
     }
+
+    public void setGameMode(GameMode gameMode);
+
+    public GameMode getGameMode();
 
     public PropertyMap getProperties();
 

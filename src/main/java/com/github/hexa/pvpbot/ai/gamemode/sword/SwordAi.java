@@ -1,7 +1,11 @@
-package com.github.hexa.pvpbot.ai;
+package com.github.hexa.pvpbot.ai.gamemode.sword;
 
 import com.github.hexa.pvpbot.Bot;
 import com.github.hexa.pvpbot.PvpBotPlugin;
+import com.github.hexa.pvpbot.ai.Ai;
+import com.github.hexa.pvpbot.ControllableBot;
+import com.github.hexa.pvpbot.ai.Target;
+import com.github.hexa.pvpbot.ai.sequence.Sequence;
 import com.github.hexa.pvpbot.util.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -11,14 +15,14 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-import static com.github.hexa.pvpbot.ai.SwordAi.ComboMethod.*;
-import static com.github.hexa.pvpbot.ai.SwordAi.HitMethod.*;
-import static com.github.hexa.pvpbot.ai.SwordAi.HitMethod.HOP;
-import static com.github.hexa.pvpbot.ai.SwordAi.HitMethod.UPPERCUT;
-import static com.github.hexa.pvpbot.ai.SwordAi.HitType.*;
-import static com.github.hexa.pvpbot.ai.SwordAi.SprintResetMethod.*;
-import static com.github.hexa.pvpbot.ai.ControllableBot.MoveDirection.*;
-import static com.github.hexa.pvpbot.ai.SwordAi.StrafeMethod.*;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.ComboMethod.*;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.HitMethod.*;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.HitMethod.HOP;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.HitMethod.UPPERCUT;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.HitType.*;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.SprintResetMethod.*;
+import static com.github.hexa.pvpbot.ControllableBot.MoveDirection.*;
+import static com.github.hexa.pvpbot.ai.gamemode.sword.SwordAi.StrafeMethod.*;
 
 public class SwordAi implements Ai {
 
@@ -30,13 +34,13 @@ public class SwordAi implements Ai {
     public static float hitSpeed = 0.93F;
     public static int wTapLength = 7;
     public static int sTapLength = 3;
-    public static int sprintResetDelay = 1;
+    public static int sprintResetDelay = 0;
     public static int maxStrafeDistance = 15;
 
     public ControllableBot bot;
     public Target target;
-    private boolean enabled;
-    private PropertyMap properties;
+    protected boolean enabled;
+    protected PropertyMap properties;
     public SequencesSword sequences;
 
     public int botCombo;
@@ -57,8 +61,8 @@ public class SwordAi implements Ai {
     public Vector motionVectorTowardsTarget;
     public double motionTowardsTarget;
 
-    private boolean freshSprint;
-    private boolean isSprintResetting;
+    protected boolean freshSprint;
+    protected boolean isSprintResetting;
     boolean firstHit;
     public int ticksSinceAttack;
     public int ticksSinceDamage;
@@ -67,7 +71,7 @@ public class SwordAi implements Ai {
     public Sequence hitSequence;
     boolean doSTap;
 
-    private Location lastLoc;
+    protected Location lastLoc;
 
     public SwordAi() {
         // Empty constructor for Sequences
@@ -264,7 +268,9 @@ public class SwordAi implements Ai {
             case W_TAP -> this.sprintResetSequence = bot.getProperties().getBoolean("counterRunning") ?
                     sequences.wTap_counterRunning :
                     sequences.wTap;
-            case S_TAP -> this.sprintResetSequence = sequences.sTap;
+            case S_TAP -> this.sprintResetSequence = bot.getProperties().getBoolean("counterRunning") ?
+                    sequences.sTap_counterRunning :
+                    sequences.sTap;
         }
     }
 
@@ -400,15 +406,12 @@ public class SwordAi implements Ai {
 
     public int getSprintResetDelay() {
         if (this.botCombo <= 1) {
-            return sprintResetDelay;
-        } else {
-            switch (this.comboMethod) {
-                case UPPERCUT:
-                    return 0;
-                default:
-                    return sprintResetDelay; // 1
-            }
+            return sprintResetDelay; // 0
         }
+        return switch (this.comboMethod) {
+            case UPPERCUT -> 0;
+            default -> sprintResetDelay; // 0
+        };
     }
 
     public boolean isFreshSprint() {

@@ -1,8 +1,10 @@
-package com.github.hexa.pvpbot.ai;
+package com.github.hexa.pvpbot;
 
 import com.github.hexa.pvpbot.Bot;
+import com.github.hexa.pvpbot.ai.Ai;
 import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
@@ -49,6 +51,8 @@ public interface ControllableBot extends Bot {
     public void setSprinting(boolean isSprinting);
 
     public float getAttackCooldown();
+
+    public Player getBukkitEntity();
 
     public class MoveDirection {
         public static final int FORWARD = 1;

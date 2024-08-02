@@ -1,9 +1,9 @@
 package com.github.hexa.pvpbot.command;
 
+import com.github.hexa.pvpbot.AbstractBotManager;
 import com.github.hexa.pvpbot.Bot;
+import com.github.hexa.pvpbot.ai.gamemode.GameMode;
 import com.github.hexa.pvpbot.PvpBotPlugin;
-import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -24,7 +24,7 @@ public class BotCommand implements CommandExecutor {
             return true;
         }
 
-        com.github.hexa.pvpbot.BotManager botManager = PvpBotPlugin.getManager();
+        AbstractBotManager botManager = PvpBotPlugin.getManager();
 
         if (args[0].equalsIgnoreCase("create") && args.length > 1) {
             String name = args[1];
@@ -32,11 +32,14 @@ public class BotCommand implements CommandExecutor {
                 sender.sendMessage("[PvpBot] Bot " + name + " already exists!");
                 return true;
             }
+            if (args.length == 2) {
+                sender.sendMessage("[PvpBot] Choose the gamemode (NONE, SWORD, SPEED)");
+                return true;
+            }
+            GameMode gameMode = GameMode.valueOf(args[2].toUpperCase());
             Player player = (Player) sender;
-            Location location = player.getLocation();
-            World world = location.getWorld();
-            sender.sendMessage("[PvpBot] Bot " + name + " created");
-            Bot bot = botManager.createBot(name, world, location, player);
+            sender.sendMessage("[PvpBot] Bot " + name + " created with gamemode " + gameMode);
+            Bot bot = botManager.createBot(name, gameMode, player);
             bot.getControllable().getAI().setEnabled(false);
             sender.sendMessage("[PvpBot] Bot " + name + " spawned");
             return true;
@@ -64,7 +67,7 @@ public class BotCommand implements CommandExecutor {
             }
             String botList = "";
             for (Map.Entry<String, Bot> entry : botManager.bots.entrySet()) {
-                botList = String.join(botList, entry.getKey());
+                botList = String.join(", ", botList, entry.getKey());
             }
             sender.sendMessage("[PvpBot] Bots: " + botList);
             return true;
